@@ -736,6 +736,10 @@
 
             const myPlayerId = gameState.player.loginCode;
 
+            // 내 플레이어 정보 먼저 가져오기
+            const myPlayerDoc = await db.collection('players').doc(myPlayerId).get();
+            const myPlayerData = myPlayerDoc.data();
+
             switch (gameState.role) {
                 case 'detective':
                     if (targetPlayer.role === 'merchant') {
@@ -755,8 +759,7 @@
 
                 case 'criminal':
                     // 현재 킬 카운트 확인
-                    const myPlayerDoc = await db.collection('players').doc(myPlayerId).get();
-                    const currentKillCount = myPlayerDoc.data().killCount || 0;
+                    const currentKillCount = myPlayerData.killCount || 0;
                     
                     if (currentKillCount >= 3) {
                         throw new Error('이미 최대 제거 횟수(3회)에 도달했습니다.');
@@ -798,7 +801,7 @@
                     result.content = `${result.amount}원을 획득했습니다.`;
                     
                     // 플레이어 돈 업데이트
-                    const currentMoney = myPlayerDoc ? (myPlayerDoc.data().money || 0) : 0;
+                    const currentMoney = myPlayerData.money || 0;
                     await db.collection('players').doc(myPlayerId).update({
                         money: currentMoney + result.amount
                     });
@@ -814,6 +817,46 @@
             gameState.results.push(result);
             
             return result;
+        }
+
+        // 시크릿 코드 생성 (백업용)
+        function generateSecretCode(role) {
+            const codes = tempSecretCodes[role];
+            return codes[Math.floor(Math.random() * codes.length)];
+        }
+
+        // 코드로 역할 추정 (임시 - 호환성용)
+        function getCodeRole(code) {
+            if (code.startsWith('DT')) return 'detective';
+            if (code.startsWith('CR')) return 'criminal';
+            if (code.startsWith('MC')) return 'merchant';
+            return null;
+        }
+
+        // 상인 증언 생성
+        function generateMerchantTestimony() {
+            const testimonies = [
+                "오늘 아침 사무실 근처에서 수상한 사람을 봤어요.",
+                "어제 늦게까지 남아있던 사람이 있었던 것 같아요.",
+                "복사기 근처에서 이상한 소리가 났어요.",
+                "누군가 다른 사람의 책상을 뒤지고 있었어요.",
+                "점심시간에 혼자 있는 사람을 봤어요.",
+                "화장실에서 수상한 대화를 들었어요."
+            ];
+            return testimonies[Math.floor(Math.random() * testimonies.length)];
+        }
+
+        // 범인 증거 생성
+        function generateCriminalEvidence() {
+            const evidences = [
+                "범인은 왼손잡이일 가능성이 높습니다.",
+                "범인은 IT 부서와 관련이 있을 것입니다.",
+                "범인은 최근 스트레스를 많이 받은 사람입니다.",
+                "범인은 회사 내부 구조를 잘 아는 사람입니다.",
+                "범인은 평소 조용한 성격의 소유자입니다.",
+                "범인은 회사에 불만이 있는 사람일 가능성이 높습니다."
+            ];
+            return evidences[Math.floor(Math.random() * evidences.length)];
         }
 
         // 코드로 역할 추정 (임시)
@@ -858,8 +901,21 @@
             resultDiv.innerHTML = html;
         }
 
-        // 결과 화면 설정
-        function setupResultScreen() {
+        // 결과 화면 설정 (Firebase 데이터 반영)
+        async function setupResultScreen() {
+            // Firebase에서 최신 데이터 가져오기
+            if (gameState.isLoggedIn) {
+                try {
+                    const playerDoc = await db.collection('players').doc(gameState.player.loginCode).get();
+                    if (playerDoc.exists) {
+                        const playerData = playerDoc.data();
+                        gameState.results = playerData.results || [];
+                    }
+                } catch (error) {
+                    console.error('결과 데이터 로드 오류:', error);
+                }
+            }
+
             const resultContent = document.getElementById('resultContent');
             const resultTitle = document.getElementById('resultTitle');
             
@@ -935,7 +991,7 @@
         // 상인 결과 표시
         function displayMerchantResults(container) {
             const transactions = gameState.results.filter(r => r.type === 'money');
-            const totalMoney = transactions.reduce((sum, t) => sum + t.amount, 0);
+            const totalMoney = transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
             
             let html = `
                 <div class="status-message">
@@ -970,10 +1026,7 @@
         // 공격 실행
         function executeKill(targetCode) {
             if (confirm('정말로 이 대상을 제거하시겠습니까? 3분 후 대상이 게임에서 제외됩니다.')) {
-                // 실제로는 Firebase에서 해당 플레이어의 상태를 변경
                 alert('제거 명령이 실행되었습니다. 3분 후 대상이 게임에서 제외됩니다.');
-                
-                // 로컬에서 즉시 결과 업데이트
                 setupResultScreen();
             }
         }
@@ -1014,6 +1067,8 @@
 
         // 페이지 로드 시 초기화
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('페이지 로드 완료');
+            
             // 로그인 코드 입력 시 자동 대문자 변환
             document.getElementById('loginCode').addEventListener('input', function(e) {
                 e.target.value = e.target.value.toUpperCase();
@@ -1039,79 +1094,141 @@
             });
         });
 
-        // Firebase 연동 함수들 (실제 구현 시 사용)
-        
-        // Firebase 초기화 (실제 config 필요)
-        /*
-        const firebaseConfig = {
-            apiKey: "your-api-key",
-            authDomain: "your-project.firebaseapp.com",
-            databaseURL: "your-database-url",
-            projectId: "your-project-id",
-            storageBucket: "your-project.appspot.com",
-            messagingSenderId: "your-sender-id",
-            appId: "your-app-id"
+        // 역할별 설명
+        const roleDescriptions = {
+            detective: {
+                title: '🔍 탐정',
+                description: '범인을 찾아내는 것이 목표입니다. 다른 플레이어의 시크릿 코드를 수집하여 단서를 모으세요.',
+                className: 'detective'
+            },
+            criminal: {
+                title: '🔪 범인',
+                description: '탐정을 찾아 제거하는 것이 목표입니다. 최대 3명까지 제거할 수 있으며, 탐정을 우선적으로 노리세요.',
+                className: 'criminal'
+            },
+            merchant: {
+                title: '💰 상인',
+                description: '돈을 버는 것이 목표입니다. 다른 플레이어와 거래하여 최대한 많은 돈을 모으세요.',
+                className: 'merchant'
+            }
         };
-        
-        // Firebase 초기화
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        */
 
-        // 실제 로그인 함수 (Firebase 사용)
-        /*
-        async function loginWithFirebase(loginCode, playerName, playerPosition) {
-            try {
-                // 로그인 코드 검증
-                const codeDoc = await db.collection('loginCodes').doc(loginCode).get();
-                
-                if (!codeDoc.exists || codeDoc.data().used) {
-                    throw new Error('유효하지 않거나 이미 사용된 코드입니다.');
-                }
-                
-                // 플레이어 등록
-                const playerData = {
-                    name: playerName,
-                    position: playerPosition,
-                    role: codeDoc.data().role,
-                    secretCode: generateSecretCode(codeDoc.data().role),
-                    isAlive: true,
-                    results: [],
-                    loginTime: firebase.firestore.FieldValue.serverTimestamp()
-                };
-                
-                await db.collection('players').doc(loginCode).set(playerData);
-                
-                // 로그인 코드 사용 표시
-                await db.collection('loginCodes').doc(loginCode).update({
-                    used: true,
-                    usedBy: playerName,
-                    usedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                
-                return playerData;
-                
-            } catch (error) {
-                throw error;
+        // 역할 카드 설정
+        function setupRoleCard() {
+            const roleInfo = roleDescriptions[gameState.role];
+            const roleCard = document.getElementById('roleCard');
+            
+            roleCard.className = `role-card ${roleInfo.className}`;
+            roleCard.innerHTML = `
+                <div class="role-title">${roleInfo.title}</div>
+                <div class="role-description">${roleInfo.description}</div>
+                <div class="secret-code">
+                    <div class="secret-code-label">나의 시크릿 코드</div>
+                    <div class="secret-code-value">${gameState.secretCode}</div>
+                </div>
+            `;
+
+            // 역할 정보 화면도 업데이트
+            document.getElementById('myRole').textContent = roleInfo.title;
+            document.getElementById('mySecretCode').textContent = gameState.secretCode;
+        }
+
+        // 화면 전환
+        function showScreen(screenName) {
+            // 모든 화면 숨기기
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+
+            // 네비게이션 활성화 상태 변경
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            // 선택된 화면 보이기
+            const screenMap = {
+                'home': 'homeScreen',
+                'role': 'roleScreen', 
+                'codeInput': 'codeInputScreen',
+                'result': 'resultScreen'
+            };
+
+            document.getElementById(screenMap[screenName]).classList.add('active');
+            
+            // 클릭된 네비게이션 항목 활성화
+            if (event && event.target) {
+                event.target.classList.add('active');
+            }
+            
+            // 결과 화면 선택 시 데이터 새로고침
+            if (screenName === 'result') {
+                setupResultScreen();
             }
         }
-        */
 
-        // 실제 코드 제출 함수 (Firebase 사용)
-        /*
-        async function submitCodeWithFirebase(targetCode) {
-            try {
-                // 대상 플레이어 찾기
-                const playersSnapshot = await db.collection('players')
-                    .where('secretCode', '==', targetCode)
-                    .get();
-                
-                if (playersSnapshot.empty) {
-                    throw new Error('유효하지 않은 시크릿 코드입니다.');
-                }
-                
-                const targetPlayer = playersSnapshot.docs[0].data();
-                const targetPlayerId = playersSnapshot.docs[0].id;
+        // 코드 결과 표시
+        function displayCodeResult(result) {
+            const resultDiv = document.getElementById('codeResult');
+            let html = `
+                <div class="status-message">
+                    <strong>${result.title}</strong><br>
+                    ${result.content}
+                </div>
+            `;
+            resultDiv.innerHTML = html;
+        }
+
+        // 탐정 결과 표시
+        function displayDetectiveResults(container) {
+            const clues = gameState.results.filter(r => r.type === 'clue' || r.type === 'evidence');
+            
+            if (clues.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666;">아직 수집한 단서가 없습니다.</p>';
+                return;
+            }
+
+            let html = '<div class="result-list">';
+            clues.forEach((clue, index) => {
+                html += `
+                    <div class="result-item" onclick="showClueDetail('${clue.title}', '${clue.content.replace(/'/g, "\\'")}')">
+                        <div class="result-item-title">${clue.title}</div>
+                        <div class="result-item-subtitle">${clue.timestamp}</div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            
+            container.innerHTML = html;
+        }
+
+        // 범인 결과 표시
+        function displayCriminalResults(container) {
+            const kills = gameState.results.filter(r => r.type === 'kill');
+            const remainingKills = 3 - kills.length;
+            
+            let html = `
+                <div class="status-message">
+                    남은 제거 기회: ${remainingKills}회
+                </div>
+            `;
+
+            if (kills.length === 0) {
+                html += '<p style="text-align: center; color: #666;">아직 제거한 대상이 없습니다.</p>';
+            } else {
+                html += '<div class="result-list">';
+                kills.forEach(kill => {
+                    html += `
+                        <div class="result-item">
+                            <div class="result-item-title">${kill.content}</div>
+                            <div class="result-item-subtitle">${kill.timestamp}</div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            
+            container.innerHTML = html;
+        }d;
                 
                 // 결과 처리
                 const result = await processCodeResult(gameState.role, targetPlayer.role);
