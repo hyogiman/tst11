@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>추리 게임</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕵️</text></svg>">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🕵️ 추리 게임</h1>
+            <p class="subtitle">탐정, 범인, 상인의 심리전</p>
+        </div>
+
+        <div class="content">
+            <!-- 로그인 화면 -->
+            <div class="screen active" id="loginScreen">
+                <div class="login-form">
+                    <h2 style="text-align: center; margin-bottom: 20px;">게임 참가</h2>
+                    
+                    <div class="form-group">
+                        <label for="loginCode">로그인 코드</label>
+                        <input type="text" id="loginCode" placeholder="영문+숫자 4자리 입력" maxlength="4" style="text-transform: uppercase;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="playerName">성명</label>
+                        <input type="text" id="playerName" placeholder="이름을 입력하세요">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="playerPosition">직위</label>
+                        <input type="text" id="playerPosition" placeholder="직위를 입력하세요">
+                    </div>
+                    
+                    <button class="btn" id="loginButton">게임 시작</button>
+                </div>
+
+                <div class="loading" id="loginLoading">
+                    <div class="spinner"></div>
+                    <p>로그인 중...</p>
+                </div>
+            </div>
+
+            <!-- 홈 화면 -->
+            <div class="screen" id="homeScreen">
+                <div id="roleCard" class="role-card">
+                    <!-- 역할 정보가 동적으로 삽입됩니다 -->
+                </div>
+                
+                <div class="status-message" id="gameStatus">
+                    게임이 진행 중입니다. 다른 플레이어들과 상호작용하며 목표를 달성하세요!
+                </div>
+            </div>
+
+            <!-- 역할/시크릿 코드 화면 -->
+            <div class="screen" id="roleScreen">
+                <h2 style="margin-bottom: 20px;">내 정보</h2>
+                
+                <div class="code-input-section">
+                    <div class="code-input-title">내 역할</div>
+                    <div id="myRole" style="font-size: 1.2em; font-weight: 600; color: #667eea;">-</div>
+                </div>
+
+                <div class="code-input-section">
+                    <div class="code-input-title">나의 시크릿 코드</div>
+                    <div id="mySecretCode" style="font-size: 2em; font-weight: 700; text-align: center; letter-spacing: 3px; color: #e74c3c;">-</div>
+                    <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
+                        상호작용 게임에서 질 경우 상대에게 이 코드를 보여주세요.
+                    </p>
+                </div>
+            </div>
+
+            <!-- 코드 입력 화면 -->
+            <div class="screen" id="codeInputScreen">
+                <h2 style="margin-bottom: 20px;">시크릿 코드 입력</h2>
+                
+                <div class="code-input-section">
+                    <div class="code-input-title">상대방의 시크릿 코드</div>
+                    <div class="form-group">
+                        <input type="text" id="targetCode" placeholder="4자리 코드 입력" maxlength="4" style="text-transform: uppercase;">
+                    </div>
+                    <button class="btn" id="submitCodeButton">코드 확인</button>
+                </div>
+
+                <div class="loading" id="codeLoading">
+                    <div class="spinner"></div>
+                    <p>코드 처리 중...</p>
+                </div>
+
+                <div id="codeResult" style="margin-top: 20px;"></div>
+            </div>
+
+            <!-- 결과 화면 -->
+            <div class="screen" id="resultScreen">
+                <h2 style="margin-bottom: 20px;" id="resultTitle">내 결과</h2>
+                
+                <div id="resultContent">
+                    <!-- 역할별 결과가 동적으로 삽입됩니다 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 하단 네비게이션 -->
+        <div class="bottom-nav" id="bottomNav">
+            <button class="nav-item active" id="homeNavBtn">
+                <span class="nav-icon">🏠</span>
+                홈
+            </button>
+            <button class="nav-item disabled" id="roleNavBtn">
+                <span class="nav-icon">👤</span>
+                역할/S.C
+            </button>
+            <button class="nav-item disabled" id="codeInputNavBtn">
+                <span class="nav-icon">🔢</span>
+                코드입력
+            </button>
+            <button class="nav-item disabled" id="resultNavBtn">
+                <span class="nav-icon">📊</span>
+                결과
+            </button>
+            <button class="nav-item" id="logoutNavBtn" style="display: none;">
+                <span class="nav-icon">🚪</span>
+                로그아웃
+            </button>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
+    
+    <!-- 게임 스크립트 -->
+    <script src="firebase-config.js"></script>
+    <script src="game.js"></script>
+</body>
+</html>
