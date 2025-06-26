@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>추리 게임</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕵️</text></svg>">
     <style>
         * {
             margin: 0;
@@ -1285,25 +1286,6 @@
                 }
             });
         });
-
-        // 역할별 설명
-        const roleDescriptions = {
-            detective: {
-                title: '🔍 탐정',
-                description: '범인을 찾아내는 것이 목표입니다. 다른 플레이어의 시크릿 코드를 수집하여 단서를 모으세요.',
-                className: 'detective'
-            },
-            criminal: {
-                title: '🔪 범인',
-                description: '탐정을 찾아 제거하는 것이 목표입니다. 최대 3명까지 제거할 수 있으며, 탐정을 우선적으로 노리세요.',
-                className: 'criminal'
-            },
-            merchant: {
-                title: '💰 상인',
-                description: '돈을 버는 것이 목표입니다. 다른 플레이어와 거래하여 최대한 많은 돈을 모으세요.',
-                className: 'merchant'
-            }
-        };
 
         // 역할 카드 설정
         function setupRoleCard() {
