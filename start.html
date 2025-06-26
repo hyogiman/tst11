@@ -942,126 +942,139 @@
             });
         });
 
-        // Firebase 연동 함수들 (실제 구현 시 사용)
+// Firebase 초기 데이터 설정 스크립트
+// Firebase Console의 "Firestore Database" → "데이터" 탭에서 실행
+import { initializeApp } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-app.js";
+// 1. Firebase Config (여기에 본인의 config 정보 입력)
+const firebaseConfig = {
+    apiKey: "AIzaSyAxw0xYVu-rvRxOCLInMkqIJeuRIt35qU4",
+    authDomain: "ncc2-c4bfa.firebaseapp.com",
+    projectId: "ncc2-c4bfa",
+    storageBucket: "ncc2-c4bfa.firebasestorage.app",
+    messagingSenderId: "386144165760",
+    appId: "1:386144165760:web:09492a8eed4a1b710deb65"
+  };
+
+// Firebase 초기화
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+// 2. 로그인 코드 생성 함수
+async function setupLoginCodes() {
+    const loginCodes = [
+        // 탐정 코드들
+        { code: 'A1B2', role: 'detective' },
+        { code: 'D3T4', role: 'detective' },
+        { code: 'G7H8', role: 'detective' },
+        { code: 'J9K0', role: 'detective' },
         
-        // Firebase 초기화 (실제 config 필요)
-        /*
-        const firebaseConfig = {
-            apiKey: "your-api-key",
-            authDomain: "your-project.firebaseapp.com",
-            databaseURL: "your-database-url",
-            projectId: "your-project-id",
-            storageBucket: "your-project.appspot.com",
-            messagingSenderId: "your-sender-id",
-            appId: "your-app-id"
-        };
+        // 범인 코드들
+        { code: 'C3D4', role: 'criminal' },
+        { code: 'F5G6', role: 'criminal' },
+        { code: 'I8J9', role: 'criminal' },
         
-        // Firebase 초기화
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        */
+        // 상인 코드들
+        { code: 'E5F6', role: 'merchant' },
+        { code: 'H7I8', role: 'merchant' },
+        { code: 'K1L2', role: 'merchant' },
+        { code: 'M3N4', role: 'merchant' },
+        { code: 'P5Q6', role: 'merchant' },
+        { code: 'R7S8', role: 'merchant' },
+        { code: 'T9U0', role: 'merchant' },
+        { code: 'V1W2', role: 'merchant' },
+    ];
 
-        // 실제 로그인 함수 (Firebase 사용)
-        /*
-        async function loginWithFirebase(loginCode, playerName, playerPosition) {
-            try {
-                // 로그인 코드 검증
-                const codeDoc = await db.collection('loginCodes').doc(loginCode).get();
-                
-                if (!codeDoc.exists || codeDoc.data().used) {
-                    throw new Error('유효하지 않거나 이미 사용된 코드입니다.');
-                }
-                
-                // 플레이어 등록
-                const playerData = {
-                    name: playerName,
-                    position: playerPosition,
-                    role: codeDoc.data().role,
-                    secretCode: generateSecretCode(codeDoc.data().role),
-                    isAlive: true,
-                    results: [],
-                    loginTime: firebase.firestore.FieldValue.serverTimestamp()
-                };
-                
-                await db.collection('players').doc(loginCode).set(playerData);
-                
-                // 로그인 코드 사용 표시
-                await db.collection('loginCodes').doc(loginCode).update({
-                    used: true,
-                    usedBy: playerName,
-                    usedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-                
-                return playerData;
-                
-            } catch (error) {
-                throw error;
-            }
-        }
-        */
+    const batch = db.batch();
+    
+    loginCodes.forEach(item => {
+        const docRef = db.collection('loginCodes').doc(item.code);
+        batch.set(docRef, {
+            role: item.role,
+            used: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+    });
 
-        // 실제 코드 제출 함수 (Firebase 사용)
-        /*
-        async function submitCodeWithFirebase(targetCode) {
-            try {
-                // 대상 플레이어 찾기
-                const playersSnapshot = await db.collection('players')
-                    .where('secretCode', '==', targetCode)
-                    .get();
-                
-                if (playersSnapshot.empty) {
-                    throw new Error('유효하지 않은 시크릿 코드입니다.');
-                }
-                
-                const targetPlayer = playersSnapshot.docs[0].data();
-                const targetPlayerId = playersSnapshot.docs[0].id;
-                
-                // 결과 처리
-                const result = await processCodeResult(gameState.role, targetPlayer.role);
-                
-                // 내 결과 저장
-                await db.collection('players').doc(gameState.player.loginCode).update({
-                    results: firebase.firestore.FieldValue.arrayUnion(result)
-                });
-                
-                // 범인의 공격인 경우 대상 플레이어 상태 변경
-                if (gameState.role === 'criminal') {
-                    setTimeout(async () => {
-                        await db.collection('players').doc(targetPlayerId).update({
-                            isAlive: false,
-                            deathTime: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                    }, 180000); // 3분 후
-                }
-                
-                return result;
-                
-            } catch (error) {
-                throw error;
-            }
-        }
-        */
+    try {
+        await batch.commit();
+        console.log('로그인 코드 설정 완료!');
+    } catch (error) {
+        console.error('로그인 코드 설정 실패:', error);
+    }
+}
 
-        // 실시간 상태 감지 (Firebase 사용)
-        /*
-        function setupRealtimeListener() {
-            db.collection('players').doc(gameState.player.loginCode)
-                .onSnapshot((doc) => {
-                    if (doc.exists) {
-                        const data = doc.data();
-                        if (!data.isAlive && gameState.isAlive) {
-                            startDeathTimer();
-                        }
-                    }
-                });
-        }
-        */
-    </script>
+// 3. 게임 설정 초기화
+async function setupGameSettings() {
+    try {
+        await db.collection('gameSettings').doc('config').set({
+            maxKills: 3,
+            gameActive: true,
+            killTimer: 180, // 3분 (초)
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        console.log('게임 설정 완료!');
+    } catch (error) {
+        console.error('게임 설정 실패:', error);
+    }
+}
 
-    <!-- Firebase SDK (실제 사용 시 주석 해제) -->
-    <!--
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
-    -->
+// 4. 시크릿 코드 풀 설정
+async function setupSecretCodes() {
+    const secretCodes = {
+        detective: ['DT01', 'DT02', 'DT03', 'DT04', 'DT05', 'DT06', 'DT07', 'DT08'],
+        criminal: ['CR01', 'CR02', 'CR03', 'CR04', 'CR05', 'CR06', 'CR07', 'CR08'],
+        merchant: ['MC01', 'MC02', 'MC03', 'MC04', 'MC05', 'MC06', 'MC07', 'MC08', 'MC09', 'MC10']
+    };
+
+    try {
+        await db.collection('gameSettings').doc('secretCodes').set({
+            ...secretCodes,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        console.log('시크릿 코드 풀 설정 완료!');
+    } catch (error) {
+        console.error('시크릿 코드 풀 설정 실패:', error);
+    }
+}
+
+// 5. 실행 함수
+async function initializeDatabase() {
+    console.log('데이터베이스 초기화 시작...');
+    
+    await setupLoginCodes();
+    await setupGameSettings();
+    await setupSecretCodes();
+    
+    console.log('모든 초기화 완료!');
+}
+
+// 실행
+initializeDatabase();
+
+// 6. 데이터 확인 함수들
+async function checkLoginCodes() {
+    const snapshot = await db.collection('loginCodes').get();
+    console.log('=== 로그인 코드 목록 ===');
+    snapshot.forEach(doc => {
+        console.log(doc.id, '=>', doc.data());
+    });
+}
+
+async function checkPlayers() {
+    const snapshot = await db.collection('players').get();
+    console.log('=== 플레이어 목록 ===');
+    if (snapshot.empty) {
+        console.log('등록된 플레이어가 없습니다.');
+    } else {
+        snapshot.forEach(doc => {
+            console.log(doc.id, '=>', doc.data());
+        });
+    }
+}
+
+// 데이터 확인 (필요 시 실행)
+// checkLoginCodes();
+// checkPlayers();
 </body>
 </html>
