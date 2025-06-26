@@ -579,7 +579,7 @@ async function processSecretCode(targetPlayer, targetPlayerId) {
 }result.type = 'clue';
                     result.title = '동료 탐정 정보';
                     result.content = '동료 탐정과 정보를 공유했습니다.';
-                }
+                
                 break;
 
             case 'criminal':
