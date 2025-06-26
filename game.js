@@ -189,6 +189,7 @@ async function logout() {
             await db.collection('players').doc(gameState.player.loginCode).delete();
         }
 
+        // 게임 상태 완전 초기화
         gameState = {
             isLoggedIn: false,
             player: null,
@@ -199,23 +200,56 @@ async function logout() {
             deathTimer: null
         };
 
-        document.getElementById('homeScreen').classList.remove('active');
+        // 모든 화면 숨기고 로그인 화면만 표시
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.classList.remove('active');
+        });
         document.getElementById('loginScreen').classList.add('active');
         
+        // 하단 네비게이션 숨기기 및 초기화
         const bottomNav = document.getElementById('bottomNav');
         bottomNav.style.display = 'none';
+        
+        // 네비게이션 버튼들 비활성화 및 초기화
+        document.getElementById('homeNavBtn').classList.remove('active');
         document.getElementById('roleNavBtn').classList.add('disabled');
+        document.getElementById('roleNavBtn').classList.remove('active');
         document.getElementById('codeInputNavBtn').classList.add('disabled');
+        document.getElementById('codeInputNavBtn').classList.remove('active');
         document.getElementById('resultNavBtn').classList.add('disabled');
+        document.getElementById('resultNavBtn').classList.remove('active');
         document.getElementById('logoutNavBtn').style.display = 'none';
+        
+        // 홈 버튼 활성화 (다시 로그인할 때를 위해)
+        document.getElementById('homeNavBtn').classList.add('active');
 
+        // 모든 입력 필드 초기화
         document.getElementById('loginCode').value = '';
         document.getElementById('playerName').value = '';
         document.getElementById('playerPosition').value = '';
         document.getElementById('targetCode').value = '';
+        
+        // 결과 화면 내용 완전 초기화
         document.getElementById('codeResult').innerHTML = '';
+        document.getElementById('resultContent').innerHTML = '';
+        document.getElementById('resultTitle').textContent = '내 결과';
+        
+        // 역할 카드 초기화
+        document.getElementById('roleCard').innerHTML = '';
+        document.getElementById('roleCard').className = 'role-card';
+        
+        // 내 정보 화면 초기화
+        document.getElementById('myRole').textContent = '-';
+        document.getElementById('mySecretCode').textContent = '-';
+        
+        // 게임 상태 메시지 초기화
+        document.getElementById('gameStatus').innerHTML = `
+            <div class="status-message">
+                게임이 진행 중입니다. 다른 플레이어들과 상호작용하며 목표를 달성하세요!
+            </div>
+        `;
 
-        console.log('로그아웃 완료');
+        console.log('로그아웃 및 화면 초기화 완료');
 
     } catch (error) {
         console.error('로그아웃 오류:', error);
@@ -355,6 +389,13 @@ async function processSecretCode(targetPlayer, targetPlayerId) {
 function showScreen(screenName) {
     console.log('화면 전환:', screenName);
     
+    // 로그인이 안 된 상태에서 다른 화면 접근 방지
+    if (!gameState.isLoggedIn && screenName !== 'home') {
+        console.log('로그인이 필요합니다.');
+        return;
+    }
+    
+    // 모든 화면 숨기기
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.remove('active');
     });
@@ -366,8 +407,12 @@ function showScreen(screenName) {
         'result': 'resultScreen'
     };
 
-    document.getElementById(screenMap[screenName]).classList.add('active');
+    const targetScreenId = screenMap[screenName];
+    if (targetScreenId) {
+        document.getElementById(targetScreenId).classList.add('active');
+    }
 
+    // 네비게이션 활성화 상태 변경
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
     });
@@ -380,7 +425,8 @@ function showScreen(screenName) {
         }
     });
     
-    if (screenName === 'result') {
+    // 결과 화면일 때만 데이터 로드
+    if (screenName === 'result' && gameState.isLoggedIn) {
         setupResultScreen().catch(error => {
             console.error('결과 화면 설정 오류:', error);
         });
