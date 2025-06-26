@@ -1,152 +1,334 @@
 <!DOCTYPE html>
-<html>
+<html lang="ko">
 <head>
-    <title>Firebase 초기화</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Firebase 데이터 초기화</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .btn {
+            background: #4285f4;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            font-size: 16px;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 10px 5px;
+            display: block;
+            width: 100%;
+            max-width: 300px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .btn:hover {
+            background: #3367d6;
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        #status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            min-height: 100px;
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            font-family: monospace;
+            white-space: pre-wrap;
+        }
+        
+        .success {
+            background: #d4edda !important;
+            border-color: #c3e6cb !important;
+            color: #155724;
+        }
+        
+        .error {
+            background: #f8d7da !important;
+            border-color: #f5c6cb !important;
+            color: #721c24;
+        }
+        
+        .info {
+            background: #d1ecf1 !important;
+            border-color: #bee5eb !important;
+            color: #0c5460;
+        }
+    </style>
 </head>
 <body>
-    <h1>Firebase 데이터 초기화</h1>
-    <button onclick="initializeDatabase()">데이터베이스 초기화</button>
-    <div id="status"></div>
+    <div class="container">
+        <h1>🔥 Firebase 데이터 초기화</h1>
+        
+        <div style="text-align: center; margin-bottom: 30px;">
+            <button class="btn" onclick="initializeDatabase()" id="initBtn">데이터베이스 초기화</button>
+            <button class="btn" onclick="checkData()" id="checkBtn">데이터 확인</button>
+            <button class="btn" onclick="clearStatus()">화면 지우기</button>
+        </div>
+        
+        <div id="status">초기화 버튼을 클릭하여 Firebase 데이터베이스를 설정하세요.</div>
+    </div>
 
+    <!-- Firebase SDK -->
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
     
-    <!-- 여기에 Firebase 설정 스크립트 내용 복사 -->
     <script>
-// Firebase 초기 데이터 설정 스크립트
-// 이 스크립트를 별도 HTML 파일로 만들어서 실행하세요
-
-// 1. Firebase Config (본인의 실제 정보)
-const firebaseConfig = {
-    apiKey: "AIzaSyAxw0xYVu-rvRxOCLInMkqIJeuRIt35qU4",
-    authDomain: "ncc2-c4bfa.firebaseapp.com",
-    projectId: "ncc2-c4bfa",
-    storageBucket: "ncc2-c4bfa.firebasestorage.app",
-    messagingSenderId: "386144165760",
-    appId: "1:386144165760:web:09492a8eed4a1b710deb65"
-};
-
-// Firebase 초기화
-firebase.initializeApp(firebaseConfig);
-const db = firebase.firestore();
-
-// 2. 로그인 코드 생성 함수
-async function setupLoginCodes() {
-    const loginCodes = [
-        // 탐정 코드들
-        { code: 'A1B2', role: 'detective' },
-        { code: 'D3T4', role: 'detective' },
-        { code: 'G7H8', role: 'detective' },
-        { code: 'J9K0', role: 'detective' },
+        // Firebase 설정
+        const firebaseConfig = {
+            apiKey: "AIzaSyAxw0xYVu-rvRxOCLInMkqIJeuRIt35qU4",
+            authDomain: "ncc2-c4bfa.firebaseapp.com",
+            projectId: "ncc2-c4bfa",
+            storageBucket: "ncc2-c4bfa.firebasestorage.app",
+            messagingSenderId: "386144165760",
+            appId: "1:386144165760:web:09492a8eed4a1b710deb65"
+        };
         
-        // 범인 코드들
-        { code: 'C3D4', role: 'criminal' },
-        { code: 'F5G6', role: 'criminal' },
-        { code: 'I8J9', role: 'criminal' },
+        // Firebase 초기화
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
         
-        // 상인 코드들
-        { code: 'E5F6', role: 'merchant' },
-        { code: 'H7I8', role: 'merchant' },
-        { code: 'K1L2', role: 'merchant' },
-        { code: 'M3N4', role: 'merchant' },
-        { code: 'P5Q6', role: 'merchant' },
-        { code: 'R7S8', role: 'merchant' },
-        { code: 'T9U0', role: 'merchant' },
-        { code: 'V1W2', role: 'merchant' },
-    ];
+        // 상태 표시 함수
+        function updateStatus(message, type = 'info') {
+            const statusDiv = document.getElementById('status');
+            const timestamp = new Date().toLocaleTimeString('ko-KR');
+            statusDiv.textContent += `[${timestamp}] ${message}\n`;
+            statusDiv.className = type;
+            statusDiv.scrollTop = statusDiv.scrollHeight;
+        }
+        
+        function clearStatus() {
+            document.getElementById('status').textContent = '';
+            document.getElementById('status').className = '';
+        }
+        
+        // 로그인 코드 생성 함수
+        async function setupLoginCodes() {
+            updateStatus('로그인 코드 설정 시작...');
+            
+            const loginCodes = [
+                // 탐정 코드들 (4개)
+                { code: 'A1B2', role: 'detective' },
+                { code: 'D3T4', role: 'detective' },
+                { code: 'G7H8', role: 'detective' },
+                { code: 'J9K0', role: 'detective' },
+                
+                // 범인 코드들 (3개)
+                { code: 'C3D4', role: 'criminal' },
+                { code: 'F5G6', role: 'criminal' },
+                { code: 'I8J9', role: 'criminal' },
+                
+                // 상인 코드들 (8개)
+                { code: 'E5F6', role: 'merchant' },
+                { code: 'H7I8', role: 'merchant' },
+                { code: 'K1L2', role: 'merchant' },
+                { code: 'M3N4', role: 'merchant' },
+                { code: 'P5Q6', role: 'merchant' },
+                { code: 'R7S8', role: 'merchant' },
+                { code: 'T9U0', role: 'merchant' },
+                { code: 'V1W2', role: 'merchant' },
+            ];
 
-    const batch = db.batch();
-    
-    loginCodes.forEach(item => {
-        const docRef = db.collection('loginCodes').doc(item.code);
-        batch.set(docRef, {
-            role: item.role,
-            used: false,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
+            const batch = db.batch();
+            
+            loginCodes.forEach(item => {
+                const docRef = db.collection('loginCodes').doc(item.code);
+                batch.set(docRef, {
+                    role: item.role,
+                    used: false,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            });
+
+            try {
+                await batch.commit();
+                updateStatus(`✅ 로그인 코드 ${loginCodes.length}개 설정 완료!`, 'success');
+                updateStatus(`   - 탐정: 4개, 범인: 3개, 상인: 8개`);
+            } catch (error) {
+                updateStatus(`❌ 로그인 코드 설정 실패: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // 게임 설정 초기화
+        async function setupGameSettings() {
+            updateStatus('게임 설정 초기화 시작...');
+            
+            try {
+                await db.collection('gameSettings').doc('config').set({
+                    maxKills: 3,
+                    gameActive: true,
+                    killTimer: 180, // 3분 (초)
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                updateStatus('✅ 게임 설정 완료!', 'success');
+            } catch (error) {
+                updateStatus(`❌ 게임 설정 실패: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // 시크릿 코드 풀 설정
+        async function setupSecretCodes() {
+            updateStatus('시크릿 코드 풀 설정 시작...');
+            
+            const secretCodes = {
+                detective: ['DT01', 'DT02', 'DT03', 'DT04', 'DT05', 'DT06', 'DT07', 'DT08'],
+                criminal: ['CR01', 'CR02', 'CR03', 'CR04', 'CR05', 'CR06', 'CR07', 'CR08'],
+                merchant: ['MC01', 'MC02', 'MC03', 'MC04', 'MC05', 'MC06', 'MC07', 'MC08', 'MC09', 'MC10']
+            };
+
+            try {
+                await db.collection('gameSettings').doc('secretCodes').set({
+                    ...secretCodes,
+                    createdAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                updateStatus('✅ 시크릿 코드 풀 설정 완료!', 'success');
+            } catch (error) {
+                updateStatus(`❌ 시크릿 코드 풀 설정 실패: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        // 메인 초기화 함수
+        async function initializeDatabase() {
+            const initBtn = document.getElementById('initBtn');
+            const checkBtn = document.getElementById('checkBtn');
+            
+            initBtn.disabled = true;
+            checkBtn.disabled = true;
+            initBtn.textContent = '초기화 중...';
+            
+            clearStatus();
+            updateStatus('🔥 Firebase 데이터베이스 초기화 시작!');
+            updateStatus('Firebase 프로젝트: ncc2-c4bfa');
+            updateStatus('');
+            
+            try {
+                // Firebase 연결 테스트
+                updateStatus('Firebase 연결 테스트...');
+                await db.collection('test').doc('connection').set({
+                    test: true,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                await db.collection('test').doc('connection').delete();
+                updateStatus('✅ Firebase 연결 성공!', 'success');
+                updateStatus('');
+                
+                // 순차적으로 초기화
+                await setupLoginCodes();
+                await setupGameSettings();
+                await setupSecretCodes();
+                
+                updateStatus('');
+                updateStatus('🎉 모든 초기화 완료!', 'success');
+                updateStatus('이제 메인 게임을 테스트할 수 있습니다.');
+                updateStatus('');
+                updateStatus('테스트용 로그인 코드:');
+                updateStatus('- A1B2 (탐정)');
+                updateStatus('- C3D4 (범인)');
+                updateStatus('- E5F6 (상인)');
+                
+            } catch (error) {
+                updateStatus('');
+                updateStatus(`💥 초기화 실패: ${error.message}`, 'error');
+                updateStatus('Firebase Console에서 Firestore Database가 생성되었는지 확인하세요.');
+                console.error('초기화 오류:', error);
+            } finally {
+                initBtn.disabled = false;
+                checkBtn.disabled = false;
+                initBtn.textContent = '데이터베이스 초기화';
+            }
+        }
+
+        // 데이터 확인 함수
+        async function checkData() {
+            clearStatus();
+            updateStatus('📊 데이터베이스 상태 확인 중...');
+            
+            try {
+                // 로그인 코드 확인
+                const loginCodesSnapshot = await db.collection('loginCodes').get();
+                updateStatus(`로그인 코드: ${loginCodesSnapshot.size}개`);
+                
+                const roleCount = { detective: 0, criminal: 0, merchant: 0 };
+                loginCodesSnapshot.forEach(doc => {
+                    const data = doc.data();
+                    roleCount[data.role]++;
+                });
+                
+                updateStatus(`  - 탐정: ${roleCount.detective}개`);
+                updateStatus(`  - 범인: ${roleCount.criminal}개`);
+                updateStatus(`  - 상인: ${roleCount.merchant}개`);
+                updateStatus('');
+                
+                // 플레이어 확인
+                const playersSnapshot = await db.collection('players').get();
+                updateStatus(`등록된 플레이어: ${playersSnapshot.size}명`);
+                
+                if (playersSnapshot.size > 0) {
+                    playersSnapshot.forEach(doc => {
+                        const data = doc.data();
+                        const status = data.isAlive ? '생존' : '제거됨';
+                        updateStatus(`  - ${data.name} (${data.role}) - ${status}`);
+                    });
+                }
+                updateStatus('');
+                
+                // 게임 설정 확인
+                const configDoc = await db.collection('gameSettings').doc('config').get();
+                if (configDoc.exists) {
+                    updateStatus('✅ 게임 설정 존재', 'success');
+                } else {
+                    updateStatus('❌ 게임 설정 없음', 'error');
+                }
+                
+                // 시크릿 코드 확인
+                const secretCodesDoc = await db.collection('gameSettings').doc('secretCodes').get();
+                if (secretCodesDoc.exists) {
+                    updateStatus('✅ 시크릿 코드 풀 존재', 'success');
+                } else {
+                    updateStatus('❌ 시크릿 코드 풀 없음', 'error');
+                }
+                
+            } catch (error) {
+                updateStatus(`❌ 데이터 확인 실패: ${error.message}`, 'error');
+                console.error('데이터 확인 오류:', error);
+            }
+        }
+        
+        // 페이지 로드 시 Firebase 연결 상태 확인
+        window.addEventListener('load', function() {
+            updateStatus('Firebase SDK 로드 완료');
+            updateStatus('프로젝트 ID: ' + firebaseConfig.projectId);
+            updateStatus('준비 완료 - 초기화 버튼을 클릭하세요.');
         });
-    });
-
-    try {
-        await batch.commit();
-        console.log('로그인 코드 설정 완료!');
-    } catch (error) {
-        console.error('로그인 코드 설정 실패:', error);
-    }
-}
-
-// 3. 게임 설정 초기화
-async function setupGameSettings() {
-    try {
-        await db.collection('gameSettings').doc('config').set({
-            maxKills: 3,
-            gameActive: true,
-            killTimer: 180, // 3분 (초)
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        console.log('게임 설정 완료!');
-    } catch (error) {
-        console.error('게임 설정 실패:', error);
-    }
-}
-
-// 4. 시크릿 코드 풀 설정
-async function setupSecretCodes() {
-    const secretCodes = {
-        detective: ['DT01', 'DT02', 'DT03', 'DT04', 'DT05', 'DT06', 'DT07', 'DT08'],
-        criminal: ['CR01', 'CR02', 'CR03', 'CR04', 'CR05', 'CR06', 'CR07', 'CR08'],
-        merchant: ['MC01', 'MC02', 'MC03', 'MC04', 'MC05', 'MC06', 'MC07', 'MC08', 'MC09', 'MC10']
-    };
-
-    try {
-        await db.collection('gameSettings').doc('secretCodes').set({
-            ...secretCodes,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        console.log('시크릿 코드 풀 설정 완료!');
-    } catch (error) {
-        console.error('시크릿 코드 풀 설정 실패:', error);
-    }
-}
-
-// 5. 실행 함수
-async function initializeDatabase() {
-    console.log('데이터베이스 초기화 시작...');
-    
-    await setupLoginCodes();
-    await setupGameSettings();
-    await setupSecretCodes();
-    
-    console.log('모든 초기화 완료!');
-}
-
-// 실행
-initializeDatabase();
-
-// 6. 데이터 확인 함수들
-async function checkLoginCodes() {
-    const snapshot = await db.collection('loginCodes').get();
-    console.log('=== 로그인 코드 목록 ===');
-    snapshot.forEach(doc => {
-        console.log(doc.id, '=>', doc.data());
-    });
-}
-
-async function checkPlayers() {
-    const snapshot = await db.collection('players').get();
-    console.log('=== 플레이어 목록 ===');
-    if (snapshot.empty) {
-        console.log('등록된 플레이어가 없습니다.');
-    } else {
-        snapshot.forEach(doc => {
-            console.log(doc.id, '=>', doc.data());
-        });
-    }
-}
-
-// 데이터 확인 (필요 시 실행)
-// checkLoginCodes();
-// checkPlayers();
     </script>
 </body>
 </html>
