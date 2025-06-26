@@ -513,6 +513,143 @@
             return codes[Math.floor(Math.random() * codes.length)];
         }
 
+        // 로그인 함수 - Firebase 연동
+        async function login() {
+            const loginCode = document.getElementById('loginCode').value.toUpperCase();
+            const playerName = document.getElementById('playerName').value;
+            const playerPosition = document.getElementById('playerPosition').value;
+
+            console.log('로그인 시도:', { loginCode, playerName, playerPosition });
+
+            if (!loginCode || !playerName || !playerPosition) {
+                alert('모든 정보를 입력해주세요.');
+                return;
+            }
+
+            // 로딩 표시
+            document.getElementById('loginLoading').style.display = 'block';
+
+            try {
+                // Firebase에서 로그인 코드 검증
+                console.log('Firebase에서 로그인 코드 확인 중...');
+                const codeDoc = await db.collection('loginCodes').doc(loginCode).get();
+                
+                if (!codeDoc.exists) {
+                    throw new Error('유효하지 않은 로그인 코드입니다.');
+                }
+                
+                const codeData = codeDoc.data();
+                console.log('코드 데이터:', codeData);
+                
+                if (codeData.used) {
+                    throw new Error('이미 사용된 로그인 코드입니다.');
+                }
+
+                // 시크릿 코드 생성
+                const secretCode = await generateSecretCodeFromFirebase(codeData.role);
+                console.log('생성된 시크릿 코드:', secretCode);
+
+                // 플레이어 정보 Firebase에 저장
+                const playerData = {
+                    name: playerName,
+                    position: playerPosition,
+                    role: codeData.role,
+                    secretCode: secretCode,
+                    isAlive: true,
+                    results: [],
+                    killCount: 0,
+                    money: 0,
+                    loginTime: firebase.firestore.FieldValue.serverTimestamp()
+                };
+
+                console.log('플레이어 데이터 저장 중...');
+                await db.collection('players').doc(loginCode).set(playerData);
+
+                // 로그인 코드 사용 표시
+                await db.collection('loginCodes').doc(loginCode).update({
+                    used: true,
+                    usedBy: playerName,
+                    usedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+
+                // 게임 상태 설정
+                gameState.player = {
+                    name: playerName,
+                    position: playerPosition,
+                    loginCode: loginCode
+                };
+                gameState.role = codeData.role;
+                gameState.secretCode = secretCode;
+                gameState.isLoggedIn = true;
+
+                console.log('게임 상태 설정 완료:', gameState);
+
+                // 홈 화면으로 이동 (크롬 호환성 개선)
+                setTimeout(() => {
+                    try {
+                        document.getElementById('loginLoading').style.display = 'none';
+                        console.log('로딩 화면 숨김 완료');
+                        
+                        // 화면 전환
+                        const allScreens = document.querySelectorAll('.screen');
+                        allScreens.forEach(screen => {
+                            screen.classList.remove('active');
+                        });
+                        
+                        const homeScreen = document.getElementById('homeScreen');
+                        if (homeScreen) {
+                            homeScreen.classList.add('active');
+                            console.log('홈 화면 활성화 완료');
+                        }
+                        
+                        // 하단 네비게이션 강제 표시
+                        const bottomNav = document.getElementById('bottomNav');
+                        if (bottomNav) {
+                            bottomNav.style.display = 'flex';
+                            bottomNav.style.visibility = 'visible';
+                            bottomNav.style.opacity = '1';
+                            console.log('하단 네비게이션 표시 완료');
+                        }
+                        
+                        // 홈 탭 활성화
+                        const navItems = document.querySelectorAll('.nav-item');
+                        navItems.forEach((item, index) => {
+                            item.classList.remove('active');
+                            if (index === 0) { // 첫 번째 버튼 (홈)
+                                item.classList.add('active');
+                            }
+                        });
+                        
+                        // 역할 카드와 결과 화면 설정
+                        if (typeof setupRoleCard === 'function') {
+                            setupRoleCard();
+                            console.log('역할 카드 설정 완료');
+                        }
+                        
+                        if (typeof setupResultScreen === 'function') {
+                            setupResultScreen();
+                            console.log('결과 화면 설정 완료');
+                        }
+                        
+                        if (typeof setupRealtimeListener === 'function') {
+                            setupRealtimeListener();
+                            console.log('실시간 리스너 설정 완료');
+                        }
+                        
+                        console.log('🎉 로그인 완료! 모든 설정 완료됨');
+                        
+                    } catch (error) {
+                        console.error('로그인 후 설정 오류:', error);
+                    }
+                }, 1000);
+
+            } catch (error) {
+                document.getElementById('loginLoading').style.display = 'none';
+                alert(error.message);
+                console.error('로그인 오류:', error);
+            }
+        }
+
         // 역할별 설명
         const roleDescriptions = {
             detective: {
