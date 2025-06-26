@@ -571,6 +571,7 @@ async function processSecretCode(targetPlayer, targetPlayerId) {
 
         gameState.results.push(result);
         return result;
+        
     } catch (error) {
         console.error('시크릿 코드 처리 오류:', error);
         throw error;
