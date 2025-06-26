@@ -230,26 +230,7 @@
             color: #27ae60;
         }
 
-        /* 공격 버튼 */
-        .attack-btn {
-            background: #e74c3c;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 5px;
-            font-size: 0.9em;
-            cursor: pointer;
-            position: absolute;
-            right: 15px;
-            top: 50%;
-            transform: translateY(-50%);
-        }
-
-        .attack-btn:hover {
-            background: #c0392b;
-        }
-
-        /* 하단 네비게이션 - 강제 표시 */
+        /* 하단 네비게이션 */
         .bottom-nav {
             position: fixed !important;
             bottom: 0 !important;
@@ -311,40 +292,6 @@
             border-color: #f5c6cb;
         }
 
-        .status-message.warning {
-            background: #fff3cd;
-            color: #856404;
-            border-color: #ffeaa7;
-        }
-
-        /* 타이머 */
-        .death-timer {
-            background: #e74c3c;
-            color: white;
-            padding: 15px;
-            border-radius: 10px;
-            text-align: center;
-            margin: 20px 0;
-            font-size: 1.2em;
-            font-weight: 600;
-        }
-
-        /* 반응형 */
-        @media (max-width: 480px) {
-            .container {
-                width: 100%;
-                border-radius: 0;
-            }
-            
-            .content {
-                padding: 15px;
-            }
-            
-            .nav-item {
-                font-size: 0.75em;
-            }
-        }
-
         /* 로딩 애니메이션 */
         .loading {
             display: none;
@@ -365,6 +312,22 @@
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
+        }
+
+        /* 반응형 */
+        @media (max-width: 480px) {
+            .container {
+                width: 100%;
+                border-radius: 0;
+            }
+            
+            .content {
+                padding: 15px;
+            }
+            
+            .nav-item {
+                font-size: 0.75em;
+            }
         }
     </style>
 </head>
@@ -413,10 +376,6 @@
                 
                 <div class="status-message" id="gameStatus">
                     게임이 진행 중입니다. 다른 플레이어들과 상호작용하며 목표를 달성하세요!
-                </div>
-
-                <div id="deathTimer" class="death-timer" style="display: none;">
-                    ⏰ 게임 종료까지: <span id="timerDisplay">3:00</span>
                 </div>
             </div>
 
@@ -489,7 +448,26 @@
         </div>
     </div>
 
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
+    
     <script>
+        // Firebase 설정
+        const firebaseConfig = {
+            apiKey: "AIzaSyAxw0xYVu-rvRxOCLInMkqIJeuRIt35qU4",
+            authDomain: "ncc2-c4bfa.firebaseapp.com",
+            projectId: "ncc2-c4bfa",
+            storageBucket: "ncc2-c4bfa.firebasestorage.app",
+            messagingSenderId: "386144165760",
+            appId: "1:386144165760:web:09492a8eed4a1b710deb65"
+        };
+        
+        // Firebase 초기화
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        console.log('Firebase 연결 완료');
+
         // 게임 상태
         let gameState = {
             isLoggedIn: false,
@@ -501,155 +479,12 @@
             deathTimer: null
         };
 
-        // 기본 시크릿 코드 (Firebase 연결 실패 시 백업용)
+        // 기본 시크릿 코드
         const tempSecretCodes = {
             'detective': ['DT01', 'DT02', 'DT03'],
             'criminal': ['CR01', 'CR02', 'CR03'],
             'merchant': ['MC01', 'MC02', 'MC03']
         };
-
-        // 시크릿 코드 생성 (백업용)
-        function generateSecretCode(role) {
-            const codes = tempSecretCodes[role];
-            return codes[Math.floor(Math.random() * codes.length)];
-        }
-
-        // 로그인 함수 - Firebase 연동
-        async function login() {
-            const loginCode = document.getElementById('loginCode').value.toUpperCase();
-            const playerName = document.getElementById('playerName').value;
-            const playerPosition = document.getElementById('playerPosition').value;
-
-            console.log('로그인 시도:', { loginCode, playerName, playerPosition });
-
-            if (!loginCode || !playerName || !playerPosition) {
-                alert('모든 정보를 입력해주세요.');
-                return;
-            }
-
-            // 로딩 표시
-            document.getElementById('loginLoading').style.display = 'block';
-
-            try {
-                // Firebase에서 로그인 코드 검증
-                console.log('Firebase에서 로그인 코드 확인 중...');
-                const codeDoc = await db.collection('loginCodes').doc(loginCode).get();
-                
-                if (!codeDoc.exists) {
-                    throw new Error('유효하지 않은 로그인 코드입니다.');
-                }
-                
-                const codeData = codeDoc.data();
-                console.log('코드 데이터:', codeData);
-                
-                if (codeData.used) {
-                    throw new Error('이미 사용된 로그인 코드입니다.');
-                }
-
-                // 시크릿 코드 생성
-                const secretCode = await generateSecretCodeFromFirebase(codeData.role);
-                console.log('생성된 시크릿 코드:', secretCode);
-
-                // 플레이어 정보 Firebase에 저장
-                const playerData = {
-                    name: playerName,
-                    position: playerPosition,
-                    role: codeData.role,
-                    secretCode: secretCode,
-                    isAlive: true,
-                    results: [],
-                    killCount: 0,
-                    money: 0,
-                    loginTime: firebase.firestore.FieldValue.serverTimestamp()
-                };
-
-                console.log('플레이어 데이터 저장 중...');
-                await db.collection('players').doc(loginCode).set(playerData);
-
-                // 로그인 코드 사용 표시
-                await db.collection('loginCodes').doc(loginCode).update({
-                    used: true,
-                    usedBy: playerName,
-                    usedAt: firebase.firestore.FieldValue.serverTimestamp()
-                });
-
-                // 게임 상태 설정
-                gameState.player = {
-                    name: playerName,
-                    position: playerPosition,
-                    loginCode: loginCode
-                };
-                gameState.role = codeData.role;
-                gameState.secretCode = secretCode;
-                gameState.isLoggedIn = true;
-
-                console.log('게임 상태 설정 완료:', gameState);
-
-                // 홈 화면으로 이동 (크롬 호환성 개선)
-                setTimeout(() => {
-                    try {
-                        document.getElementById('loginLoading').style.display = 'none';
-                        console.log('로딩 화면 숨김 완료');
-                        
-                        // 화면 전환
-                        const allScreens = document.querySelectorAll('.screen');
-                        allScreens.forEach(screen => {
-                            screen.classList.remove('active');
-                        });
-                        
-                        const homeScreen = document.getElementById('homeScreen');
-                        if (homeScreen) {
-                            homeScreen.classList.add('active');
-                            console.log('홈 화면 활성화 완료');
-                        }
-                        
-                        // 하단 네비게이션 강제 표시
-                        const bottomNav = document.getElementById('bottomNav');
-                        if (bottomNav) {
-                            bottomNav.style.display = 'flex';
-                            bottomNav.style.visibility = 'visible';
-                            bottomNav.style.opacity = '1';
-                            console.log('하단 네비게이션 표시 완료');
-                        }
-                        
-                        // 홈 탭 활성화
-                        const navItems = document.querySelectorAll('.nav-item');
-                        navItems.forEach((item, index) => {
-                            item.classList.remove('active');
-                            if (index === 0) { // 첫 번째 버튼 (홈)
-                                item.classList.add('active');
-                            }
-                        });
-                        
-                        // 역할 카드와 결과 화면 설정
-                        if (typeof setupRoleCard === 'function') {
-                            setupRoleCard();
-                            console.log('역할 카드 설정 완료');
-                        }
-                        
-                        if (typeof setupResultScreen === 'function') {
-                            setupResultScreen();
-                            console.log('결과 화면 설정 완료');
-                        }
-                        
-                        if (typeof setupRealtimeListener === 'function') {
-                            setupRealtimeListener();
-                            console.log('실시간 리스너 설정 완료');
-                        }
-                        
-                        console.log('🎉 로그인 완료! 모든 설정 완료됨');
-                        
-                    } catch (error) {
-                        console.error('로그인 후 설정 오류:', error);
-                    }
-                }, 1000);
-
-            } catch (error) {
-                document.getElementById('loginLoading').style.display = 'none';
-                alert(error.message);
-                console.error('로그인 오류:', error);
-            }
-        }
 
         // 역할별 설명
         const roleDescriptions = {
@@ -670,8 +505,34 @@
             }
         };
 
-        // 로그인 함수 - Firebase 연동
+        // 시크릿 코드 생성
+        function generateSecretCode(role) {
+            const codes = tempSecretCodes[role];
+            return codes[Math.floor(Math.random() * codes.length)];
+        }
+
+        // Firebase에서 시크릿 코드 생성
+        async function generateSecretCodeFromFirebase(role) {
+            try {
+                const secretCodesDoc = await db.collection('gameSettings').doc('secretCodes').get();
+                if (!secretCodesDoc.exists) {
+                    return generateSecretCode(role);
+                }
+                
+                const secretCodesData = secretCodesDoc.data();
+                const codes = secretCodesData[role] || tempSecretCodes[role];
+                
+                return codes[Math.floor(Math.random() * codes.length)];
+            } catch (error) {
+                console.error('시크릿 코드 생성 오류:', error);
+                return generateSecretCode(role);
+            }
+        }
+
+        // 로그인 함수
         async function login() {
+            console.log('login 함수 호출됨');
+            
             const loginCode = document.getElementById('loginCode').value.toUpperCase();
             const playerName = document.getElementById('playerName').value;
             const playerPosition = document.getElementById('playerPosition').value;
@@ -681,11 +542,9 @@
                 return;
             }
 
-            // 로딩 표시
             document.getElementById('loginLoading').style.display = 'block';
 
             try {
-                // Firebase에서 로그인 코드 검증
                 const codeDoc = await db.collection('loginCodes').doc(loginCode).get();
                 
                 if (!codeDoc.exists) {
@@ -693,14 +552,13 @@
                 }
                 
                 const codeData = codeDoc.data();
+                
                 if (codeData.used) {
                     throw new Error('이미 사용된 로그인 코드입니다.');
                 }
 
-                // 시크릿 코드 생성
                 const secretCode = await generateSecretCodeFromFirebase(codeData.role);
 
-                // 플레이어 정보 Firebase에 저장
                 const playerData = {
                     name: playerName,
                     position: playerPosition,
@@ -715,14 +573,12 @@
 
                 await db.collection('players').doc(loginCode).set(playerData);
 
-                // 로그인 코드 사용 표시
                 await db.collection('loginCodes').doc(loginCode).update({
                     used: true,
                     usedBy: playerName,
                     usedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
-                // 게임 상태 설정
                 gameState.player = {
                     name: playerName,
                     position: playerPosition,
@@ -732,63 +588,22 @@
                 gameState.secretCode = secretCode;
                 gameState.isLoggedIn = true;
 
-                // 홈 화면으로 이동 (크롬 호환성 개선)
                 setTimeout(() => {
-                    try {
-                        document.getElementById('loginLoading').style.display = 'none';
-                        console.log('로딩 화면 숨김 완료');
-                        
-                        // 화면 전환
-                        const allScreens = document.querySelectorAll('.screen');
-                        allScreens.forEach(screen => {
-                            screen.classList.remove('active');
-                        });
-                        
-                        const homeScreen = document.getElementById('homeScreen');
-                        if (homeScreen) {
-                            homeScreen.classList.add('active');
-                            console.log('홈 화면 활성화 완료');
-                        }
-                        
-                        // 하단 네비게이션 강제 표시
-                        const bottomNav = document.getElementById('bottomNav');
-                        if (bottomNav) {
-                            bottomNav.style.display = 'flex';
-                            bottomNav.style.visibility = 'visible';
-                            bottomNav.style.opacity = '1';
-                            console.log('하단 네비게이션 표시 완료');
-                        }
-                        
-                        // 홈 탭 활성화
-                        const navItems = document.querySelectorAll('.nav-item');
-                        navItems.forEach((item, index) => {
-                            item.classList.remove('active');
-                            if (index === 0) { // 첫 번째 버튼 (홈)
-                                item.classList.add('active');
-                            }
-                        });
-                        
-                        // 역할 카드와 결과 화면 설정
-                        if (typeof setupRoleCard === 'function') {
-                            setupRoleCard();
-                            console.log('역할 카드 설정 완료');
-                        }
-                        
-                        if (typeof setupResultScreen === 'function') {
-                            setupResultScreen();
-                            console.log('결과 화면 설정 완료');
-                        }
-                        
-                        if (typeof setupRealtimeListener === 'function') {
-                            setupRealtimeListener();
-                            console.log('실시간 리스너 설정 완료');
-                        }
-                        
-                        console.log('🎉 로그인 완료! 모든 설정 완료됨');
-                        
-                    } catch (error) {
-                        console.error('로그인 후 설정 오류:', error);
-                    }
+                    document.getElementById('loginLoading').style.display = 'none';
+                    
+                    // 로그인 화면 숨기기
+                    document.getElementById('loginScreen').classList.remove('active');
+                    document.getElementById('homeScreen').classList.add('active');
+                    
+                    // 하단 네비게이션 표시
+                    const bottomNav = document.getElementById('bottomNav');
+                    bottomNav.style.display = 'flex';
+                    
+                    setupRoleCard();
+                    setupResultScreen();
+                    setupRealtimeListener();
+                    
+                    console.log('로그인 완료!');
                 }, 1000);
 
             } catch (error) {
@@ -798,71 +613,7 @@
             }
         }
 
-        // Firebase에서 시크릿 코드 생성
-        async function generateSecretCodeFromFirebase(role) {
-            try {
-                const secretCodesDoc = await db.collection('gameSettings').doc('secretCodes').get();
-                if (!secretCodesDoc.exists) {
-                    // 기본 코드 사용
-                    return generateSecretCode(role);
-                }
-                
-                const secretCodesData = secretCodesDoc.data();
-                const codes = secretCodesData[role] || tempSecretCodes[role];
-                
-                // 사용되지 않은 코드 찾기 (나중에 구현)
-                return codes[Math.floor(Math.random() * codes.length)];
-            } catch (error) {
-                console.error('시크릿 코드 생성 오류:', error);
-                return generateSecretCode(role);
-            }
-        }
-
-        // 역할 카드 설정
-        function setupRoleCard() {
-            const roleInfo = roleDescriptions[gameState.role];
-            const roleCard = document.getElementById('roleCard');
-            
-            roleCard.className = `role-card ${roleInfo.className}`;
-            roleCard.innerHTML = `
-                <div class="role-title">${roleInfo.title}</div>
-                <div class="role-description">${roleInfo.description}</div>
-                <div class="secret-code">
-                    <div class="secret-code-label">나의 시크릿 코드</div>
-                    <div class="secret-code-value">${gameState.secretCode}</div>
-                </div>
-            `;
-
-            // 역할 정보 화면도 업데이트
-            document.getElementById('myRole').textContent = roleInfo.title;
-            document.getElementById('mySecretCode').textContent = gameState.secretCode;
-        }
-
-        // 화면 전환
-        function showScreen(screenName) {
-            // 모든 화면 숨기기
-            document.querySelectorAll('.screen').forEach(screen => {
-                screen.classList.remove('active');
-            });
-
-            // 네비게이션 활성화 상태 변경
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-            });
-
-            // 선택된 화면 보이기
-            const screenMap = {
-                'home': 'homeScreen',
-                'role': 'roleScreen', 
-                'codeInput': 'codeInputScreen',
-                'result': 'resultScreen'
-            };
-
-            document.getElementById(screenMap[screenName]).classList.add('active');
-            event.target.classList.add('active');
-        }
-
-        // 코드 제출 - Firebase 연동
+        // 코드 제출
         async function submitCode() {
             const targetCode = document.getElementById('targetCode').value.toUpperCase();
             
@@ -871,15 +622,9 @@
                 return;
             }
 
-            if (!gameState.isAlive) {
-                alert('게임에서 제외되어 코드를 입력할 수 없습니다.');
-                return;
-            }
-
             document.getElementById('codeLoading').style.display = 'block';
 
             try {
-                // Firebase에서 대상 플레이어 찾기
                 const playersSnapshot = await db.collection('players')
                     .where('secretCode', '==', targetCode)
                     .get();
@@ -892,35 +637,31 @@
                 const targetPlayer = targetPlayerDoc.data();
                 const targetPlayerId = targetPlayerDoc.id;
 
-                // 자기 자신의 코드는 입력 불가
                 if (targetPlayerId === gameState.player.loginCode) {
                     throw new Error('자신의 시크릿 코드는 입력할 수 없습니다.');
                 }
 
-                // 대상이 이미 죽은 플레이어인지 확인
                 if (!targetPlayer.isAlive) {
                     throw new Error('이미 게임에서 제외된 플레이어의 코드입니다.');
                 }
 
-                // 코드 처리 결과 생성
-                const result = await processSecretCodeWithFirebase(targetPlayer, targetPlayerId);
+                const result = await processSecretCode(targetPlayer, targetPlayerId);
                 
                 setTimeout(() => {
                     document.getElementById('codeLoading').style.display = 'none';
                     displayCodeResult(result);
                     document.getElementById('targetCode').value = '';
-                    setupResultScreen(); // 결과 화면 업데이트
+                    setupResultScreen();
                 }, 1000);
 
             } catch (error) {
                 document.getElementById('codeLoading').style.display = 'none';
                 alert(error.message);
-                console.error('코드 제출 오류:', error);
             }
         }
 
-        // Firebase와 연동된 시크릿 코드 처리
-        async function processSecretCodeWithFirebase(targetPlayer, targetPlayerId) {
+        // 시크릿 코드 처리
+        async function processSecretCode(targetPlayer, targetPlayerId) {
             let result = {
                 targetCode: targetPlayer.secretCode,
                 targetRole: targetPlayer.role,
@@ -928,8 +669,6 @@
             };
 
             const myPlayerId = gameState.player.loginCode;
-
-            // 내 플레이어 정보 먼저 가져오기
             const myPlayerDoc = await db.collection('players').doc(myPlayerId).get();
             const myPlayerData = myPlayerDoc.data();
 
@@ -951,7 +690,6 @@
                     break;
 
                 case 'criminal':
-                    // 현재 킬 카운트 확인
                     const currentKillCount = myPlayerData.killCount || 0;
                     
                     if (currentKillCount >= 3) {
@@ -960,14 +698,12 @@
 
                     result.type = 'kill';
                     result.title = '제거 예약';
-                    result.content = `${targetPlayer.role === 'detective' ? '탐정' : targetPlayer.role === 'merchant' ? '상인' : '대상'}을 제거 예약했습니다. 3분 후 게임에서 제외됩니다.`;
+                    result.content = `${targetPlayer.role === 'detective' ? '탐정' : targetPlayer.role === 'merchant' ? '상인' : '대상'}을 제거 예약했습니다.`;
                     
-                    // 킬 카운트 증가
                     await db.collection('players').doc(myPlayerId).update({
                         killCount: currentKillCount + 1
                     });
 
-                    // 3분 후 대상 플레이어 제거
                     setTimeout(async () => {
                         try {
                             await db.collection('players').doc(targetPlayerId).update({
@@ -975,25 +711,23 @@
                                 deathTime: firebase.firestore.FieldValue.serverTimestamp(),
                                 killedBy: myPlayerId
                             });
-                            console.log(`플레이어 ${targetPlayerId} 제거 완료`);
                         } catch (error) {
                             console.error('플레이어 제거 오류:', error);
                         }
-                    }, 180000); // 3분 = 180,000ms
+                    }, 180000);
                     
                     break;
 
                 case 'merchant':
                     result.type = 'money';
                     if (targetPlayer.role === 'merchant') {
-                        result.amount = Math.floor(Math.random() * 100) + 1; // 1-100원
+                        result.amount = Math.floor(Math.random() * 100) + 1;
                     } else {
-                        result.amount = Math.floor(Math.random() * 100) + 50; // 50-149원
+                        result.amount = Math.floor(Math.random() * 100) + 50;
                     }
                     result.title = '거래 성공';
                     result.content = `${result.amount}원을 획득했습니다.`;
                     
-                    // 플레이어 돈 업데이트
                     const currentMoney = myPlayerData.money || 0;
                     await db.collection('players').doc(myPlayerId).update({
                         money: currentMoney + result.amount
@@ -1001,102 +735,72 @@
                     break;
             }
 
-            // 결과를 Firebase에 저장
             await db.collection('players').doc(myPlayerId).update({
                 results: firebase.firestore.FieldValue.arrayUnion(result)
             });
 
-            // 로컬 상태 업데이트
             gameState.results.push(result);
-            
             return result;
         }
 
-        // 시크릿 코드 생성 (백업용)
-        function generateSecretCode(role) {
-            const codes = tempSecretCodes[role];
-            return codes[Math.floor(Math.random() * codes.length)];
+        // 화면 전환
+        function showScreen(screenName) {
+            console.log('화면 전환:', screenName);
+            
+            // 모든 화면 숨기기
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+
+            // 선택된 화면 보이기
+            const screenMap = {
+                'home': 'homeScreen',
+                'role': 'roleScreen', 
+                'codeInput': 'codeInputScreen',
+                'result': 'resultScreen'
+            };
+
+            document.getElementById(screenMap[screenName]).classList.add('active');
+
+            // 네비게이션 활성화
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            const navItems = document.querySelectorAll('.nav-item');
+            const buttonScreens = ['home', 'role', 'codeInput', 'result'];
+            navItems.forEach((button, index) => {
+                if (buttonScreens[index] === screenName) {
+                    button.classList.add('active');
+                }
+            });
+            
+            if (screenName === 'result') {
+                setupResultScreen();
+            }
         }
 
-        // 코드로 역할 추정 (임시 - 호환성용)
-        function getCodeRole(code) {
-            if (code.startsWith('DT')) return 'detective';
-            if (code.startsWith('CR')) return 'criminal';
-            if (code.startsWith('MC')) return 'merchant';
-            return null;
-        }
-
-        // 상인 증언 생성
-        function generateMerchantTestimony() {
-            const testimonies = [
-                "오늘 아침 사무실 근처에서 수상한 사람을 봤어요.",
-                "어제 늦게까지 남아있던 사람이 있었던 것 같아요.",
-                "복사기 근처에서 이상한 소리가 났어요.",
-                "누군가 다른 사람의 책상을 뒤지고 있었어요.",
-                "점심시간에 혼자 있는 사람을 봤어요.",
-                "화장실에서 수상한 대화를 들었어요."
-            ];
-            return testimonies[Math.floor(Math.random() * testimonies.length)];
-        }
-
-        // 범인 증거 생성
-        function generateCriminalEvidence() {
-            const evidences = [
-                "범인은 왼손잡이일 가능성이 높습니다.",
-                "범인은 IT 부서와 관련이 있을 것입니다.",
-                "범인은 최근 스트레스를 많이 받은 사람입니다.",
-                "범인은 회사 내부 구조를 잘 아는 사람입니다.",
-                "범인은 평소 조용한 성격의 소유자입니다.",
-                "범인은 회사에 불만이 있는 사람일 가능성이 높습니다."
-            ];
-            return evidences[Math.floor(Math.random() * evidences.length)];
-        }
-
-        // 코드로 역할 추정 (임시)
-        function getCodeRole(code) {
-            if (code.startsWith('DT')) return 'detective';
-            if (code.startsWith('CR')) return 'criminal';
-            if (code.startsWith('MC')) return 'merchant';
-            return null;
-        }
-
-        // 상인 증언 생성
-        function generateMerchantTestimony() {
-            const testimonies = [
-                "오늘 아침 사무실 근처에서 수상한 사람을 봤어요.",
-                "어제 늦게까지 남아있던 사람이 있었던 것 같아요.",
-                "복사기 근처에서 이상한 소리가 났어요.",
-                "누군가 다른 사람의 책상을 뒤지고 있었어요."
-            ];
-            return testimonies[Math.floor(Math.random() * testimonies.length)];
-        }
-
-        // 범인 증거 생성
-        function generateCriminalEvidence() {
-            const evidences = [
-                "범인은 왼손잡이일 가능성이 높습니다.",
-                "범인은 IT 부서와 관련이 있을 것입니다.",
-                "범인은 최근 스트레스를 많이 받은 사람입니다.",
-                "범인은 회사 내부 구조를 잘 아는 사람입니다."
-            ];
-            return evidences[Math.floor(Math.random() * evidences.length)];
-        }
-
-        // 코드 결과 표시
-        function displayCodeResult(result) {
-            const resultDiv = document.getElementById('codeResult');
-            let html = `
-                <div class="status-message">
-                    <strong>${result.title}</strong><br>
-                    ${result.content}
+        // 역할 카드 설정
+        function setupRoleCard() {
+            const roleInfo = roleDescriptions[gameState.role];
+            const roleCard = document.getElementById('roleCard');
+            
+            roleCard.className = `role-card ${roleInfo.className}`;
+            roleCard.innerHTML = `
+                <div class="role-title">${roleInfo.title}</div>
+                <div class="role-description">${roleInfo.description}</div>
+                <div class="secret-code">
+                    <div class="secret-code-label">나의 시크릿 코드</div>
+                    <div class="secret-code-value">${gameState.secretCode}</div>
                 </div>
             `;
-            resultDiv.innerHTML = html;
+
+            document.getElementById('myRole').textContent = roleInfo.title;
+            document.getElementById('mySecretCode').textContent = gameState.secretCode;
         }
 
-        // 결과 화면 설정 (Firebase 데이터 반영)
+        // 결과 화면 설정
         async function setupResultScreen() {
-            // Firebase에서 최신 데이터 가져오기
             if (gameState.isLoggedIn) {
                 try {
                     const playerDoc = await db.collection('players').doc(gameState.player.loginCode).get();
@@ -1128,7 +832,46 @@
             }
         }
 
-        // 탐정 결과 표시
+        // 실시간 리스너
+        function setupRealtimeListener() {
+            db.collection('players').doc(gameState.player.loginCode)
+                .onSnapshot((doc) => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        
+                        if (!data.isAlive && gameState.isAlive) {
+                            gameState.isAlive = false;
+                            showDeathMessage();
+                        }
+                        
+                        if (data.results && data.results.length !== gameState.results.length) {
+                            gameState.results = data.results;
+                            setupResultScreen();
+                        }
+                    }
+                });
+        }
+
+        function showDeathMessage() {
+            const gameStatus = document.getElementById('gameStatus');
+            gameStatus.innerHTML = `
+                <div class="status-message error">
+                    ⚠️ 범인에게 제거되었습니다! 게임에서 제외됩니다.
+                </div>
+            `;
+        }
+
+        function displayCodeResult(result) {
+            const resultDiv = document.getElementById('codeResult');
+            let html = `
+                <div class="status-message">
+                    <strong>${result.title}</strong><br>
+                    ${result.content}
+                </div>
+            `;
+            resultDiv.innerHTML = html;
+        }
+
         function displayDetectiveResults(container) {
             const clues = gameState.results.filter(r => r.type === 'clue' || r.type === 'evidence');
             
@@ -1138,9 +881,9 @@
             }
 
             let html = '<div class="result-list">';
-            clues.forEach(clue => {
+            clues.forEach((clue) => {
                 html += `
-                    <div class="result-item" onclick="showClueDetail('${clue.title}', '${clue.content}')">
+                    <div class="result-item" onclick="showClueDetail('${clue.title}', '${clue.content.replace(/'/g, "\\'")}')">
                         <div class="result-item-title">${clue.title}</div>
                         <div class="result-item-subtitle">${clue.timestamp}</div>
                     </div>
@@ -1151,7 +894,6 @@
             container.innerHTML = html;
         }
 
-        // 범인 결과 표시
         function displayCriminalResults(container) {
             const kills = gameState.results.filter(r => r.type === 'kill');
             const remainingKills = 3 - kills.length;
@@ -1171,7 +913,6 @@
                         <div class="result-item">
                             <div class="result-item-title">${kill.content}</div>
                             <div class="result-item-subtitle">${kill.timestamp}</div>
-                            <button class="attack-btn" onclick="executeKill('${kill.targetCode}')">공격</button>
                         </div>
                     `;
                 });
@@ -1181,7 +922,6 @@
             container.innerHTML = html;
         }
 
-        // 상인 결과 표시
         function displayMerchantResults(container) {
             const transactions = gameState.results.filter(r => r.type === 'money');
             const totalMoney = transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
@@ -1211,51 +951,32 @@
             container.innerHTML = html;
         }
 
-        // 단서 상세 보기
         function showClueDetail(title, content) {
             alert(`${title}\n\n${content}`);
         }
 
-        // 공격 실행
-        function executeKill(targetCode) {
-            if (confirm('정말로 이 대상을 제거하시겠습니까? 3분 후 대상이 게임에서 제외됩니다.')) {
-                alert('제거 명령이 실행되었습니다. 3분 후 대상이 게임에서 제외됩니다.');
-                setupResultScreen();
-            }
+        function generateMerchantTestimony() {
+            const testimonies = [
+                "오늘 아침 사무실 근처에서 수상한 사람을 봤어요.",
+                "어제 늦게까지 남아있던 사람이 있었던 것 같아요.",
+                "복사기 근처에서 이상한 소리가 났어요.",
+                "누군가 다른 사람의 책상을 뒤지고 있었어요.",
+                "점심시간에 혼자 있는 사람을 봤어요.",
+                "화장실에서 수상한 대화를 들었어요."
+            ];
+            return testimonies[Math.floor(Math.random() * testimonies.length)];
         }
 
-        // 사망 타이머 시작
-        function startDeathTimer() {
-            gameState.isAlive = false;
-            let timeLeft = 180; // 3분 = 180초
-            
-            const timerDisplay = document.getElementById('timerDisplay');
-            const deathTimer = document.getElementById('deathTimer');
-            deathTimer.style.display = 'block';
-            
-            gameState.deathTimer = setInterval(() => {
-                const minutes = Math.floor(timeLeft / 60);
-                const seconds = timeLeft % 60;
-                timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
-                
-                timeLeft--;
-                
-                if (timeLeft < 0) {
-                    clearInterval(gameState.deathTimer);
-                    endGame();
-                }
-            }, 1000);
-        }
-
-        // 게임 종료
-        function endGame() {
-            alert('게임에서 제외되었습니다.');
-            document.getElementById('bottomNav').style.display = 'none';
-            document.getElementById('gameStatus').innerHTML = `
-                <div class="status-message error">
-                    게임에서 제외되었습니다. 더 이상 참여할 수 없습니다.
-                </div>
-            `;
+        function generateCriminalEvidence() {
+            const evidences = [
+                "범인은 왼손잡이일 가능성이 높습니다.",
+                "범인은 IT 부서와 관련이 있을 것입니다.",
+                "범인은 최근 스트레스를 많이 받은 사람입니다.",
+                "범인은 회사 내부 구조를 잘 아는 사람입니다.",
+                "범인은 평소 조용한 성격의 소유자입니다.",
+                "범인은 회사에 불만이 있는 사람일 가능성이 높습니다."
+            ];
+            return evidences[Math.floor(Math.random() * evidences.length)];
         }
 
         // 페이지 로드 시 초기화
@@ -1285,226 +1006,10 @@
                     submitCode();
                 }
             });
+
+            // 하단 네비게이션 숨김 (로그인 후 표시)
+            document.getElementById('bottomNav').style.display = 'none';
         });
-
-        // 역할 카드 설정
-        function setupRoleCard() {
-            const roleInfo = roleDescriptions[gameState.role];
-            const roleCard = document.getElementById('roleCard');
-            
-            roleCard.className = `role-card ${roleInfo.className}`;
-            roleCard.innerHTML = `
-                <div class="role-title">${roleInfo.title}</div>
-                <div class="role-description">${roleInfo.description}</div>
-                <div class="secret-code">
-                    <div class="secret-code-label">나의 시크릿 코드</div>
-                    <div class="secret-code-value">${gameState.secretCode}</div>
-                </div>
-            `;
-
-            // 역할 정보 화면도 업데이트
-            document.getElementById('myRole').textContent = roleInfo.title;
-            document.getElementById('mySecretCode').textContent = gameState.secretCode;
-        }
-
-        // 화면 전환 함수 (크롬 호환성 개선)
-        function showScreen(screenName) {
-            try {
-                console.log('화면 전환:', screenName);
-                
-                // 모든 화면 숨기기
-                const screens = ['loginScreen', 'homeScreen', 'roleScreen', 'codeInputScreen', 'resultScreen'];
-                screens.forEach(screenId => {
-                    const screen = document.getElementById(screenId);
-                    if (screen) {
-                        screen.classList.remove('active');
-                    }
-                });
-
-                // 선택된 화면 보이기
-                const screenMap = {
-                    'home': 'homeScreen',
-                    'role': 'roleScreen', 
-                    'codeInput': 'codeInputScreen',
-                    'result': 'resultScreen'
-                };
-
-                const targetScreen = document.getElementById(screenMap[screenName]);
-                if (targetScreen) {
-                    targetScreen.classList.add('active');
-                    console.log('화면 활성화:', screenMap[screenName]);
-                }
-
-                // 네비게이션 활성화 상태 변경
-                const navItems = document.querySelectorAll('.nav-item');
-                navItems.forEach(item => {
-                    item.classList.remove('active');
-                });
-
-                // 클릭된 버튼 찾아서 활성화
-                const buttonScreens = ['home', 'role', 'codeInput', 'result'];
-                navItems.forEach((button, index) => {
-                    if (buttonScreens[index] === screenName) {
-                        button.classList.add('active');
-                        console.log('네비게이션 활성화:', index);
-                    }
-                });
-                
-                // 결과 화면 선택 시 데이터 새로고침
-                if (screenName === 'result' && typeof setupResultScreen === 'function') {
-                    setupResultScreen();
-                }
-                
-            } catch (error) {
-                console.error('showScreen 오류:', error);
-            }
-        }
-
-        // 코드 결과 표시
-        function displayCodeResult(result) {
-            const resultDiv = document.getElementById('codeResult');
-            let html = `
-                <div class="status-message">
-                    <strong>${result.title}</strong><br>
-                    ${result.content}
-                </div>
-            `;
-            resultDiv.innerHTML = html;
-        }
-
-        // 탐정 결과 표시
-        function displayDetectiveResults(container) {
-            const clues = gameState.results.filter(r => r.type === 'clue' || r.type === 'evidence');
-            
-            if (clues.length === 0) {
-                container.innerHTML = '<p style="text-align: center; color: #666;">아직 수집한 단서가 없습니다.</p>';
-                return;
-            }
-
-            let html = '<div class="result-list">';
-            clues.forEach((clue, index) => {
-                html += `
-                    <div class="result-item" onclick="showClueDetail('${clue.title}', '${clue.content.replace(/'/g, "\\'")}')">
-                        <div class="result-item-title">${clue.title}</div>
-                        <div class="result-item-subtitle">${clue.timestamp}</div>
-                    </div>
-                `;
-            });
-            html += '</div>';
-            
-            container.innerHTML = html;
-        }
-
-        // 범인 결과 표시
-        function displayCriminalResults(container) {
-            const kills = gameState.results.filter(r => r.type === 'kill');
-            const remainingKills = 3 - kills.length;
-            
-            let html = `
-                <div class="status-message">
-                    남은 제거 기회: ${remainingKills}회
-                </div>
-            `;
-
-            if (kills.length === 0) {
-                html += '<p style="text-align: center; color: #666;">아직 제거한 대상이 없습니다.</p>';
-            } else {
-                html += '<div class="result-list">';
-                kills.forEach(kill => {
-                    html += `
-                        <div class="result-item">
-                            <div class="result-item-title">${kill.content}</div>
-                            <div class="result-item-subtitle">${kill.timestamp}</div>
-                        </div>
-                    `;
-                });
-                html += '</div>';
-            }
-            
-            container.innerHTML = html;
-        }d;
-                
-                // 결과 처리
-                const result = await processCodeResult(gameState.role, targetPlayer.role);
-                
-                // 내 결과 저장
-                await db.collection('players').doc(gameState.player.loginCode).update({
-                    results: firebase.firestore.FieldValue.arrayUnion(result)
-                });
-                
-                // 범인의 공격인 경우 대상 플레이어 상태 변경
-                if (gameState.role === 'criminal') {
-                    setTimeout(async () => {
-                        await db.collection('players').doc(targetPlayerId).update({
-                            isAlive: false,
-                            deathTime: firebase.firestore.FieldValue.serverTimestamp()
-                        });
-                    }, 180000); // 3분 후
-                }
-                
-                return result;
-                
-            } catch (error) {
-                throw error;
-            }
-        }
-        */
-
-        // 실시간 상태 감지 - Firebase 리스너
-        function setupRealtimeListener() {
-            // 내 플레이어 상태 실시간 감지
-            db.collection('players').doc(gameState.player.loginCode)
-                .onSnapshot((doc) => {
-                    if (doc.exists) {
-                        const data = doc.data();
-                        
-                        // 사망 처리
-                        if (!data.isAlive && gameState.isAlive) {
-                            gameState.isAlive = false;
-                            showDeathMessage();
-                            startDeathTimer();
-                        }
-                        
-                        // 결과 업데이트 (다른 기기에서 로그인한 경우 동기화)
-                        if (data.results && data.results.length !== gameState.results.length) {
-                            gameState.results = data.results;
-                            setupResultScreen();
-                        }
-                    }
-                });
-        }
-
-        // 사망 메시지 표시
-        function showDeathMessage() {
-            const gameStatus = document.getElementById('gameStatus');
-            gameStatus.innerHTML = `
-                <div class="status-message error">
-                    ⚠️ 범인에게 제거되었습니다! 3분 후 게임에서 완전히 제외됩니다.
-                </div>
-            `;
-        }
-    </script>
-
-    <!-- Firebase SDK -->
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
-    
-    <script>
-        // Firebase 설정
-        const firebaseConfig = {
-            apiKey: "AIzaSyAxw0xYVu-rvRxOCLInMkqIJeuRIt35qU4",
-            authDomain: "ncc2-c4bfa.firebaseapp.com",
-            projectId: "ncc2-c4bfa",
-            storageBucket: "ncc2-c4bfa.firebasestorage.app",
-            messagingSenderId: "386144165760",
-            appId: "1:386144165760:web:09492a8eed4a1b710deb65"
-        };
-        
-        // Firebase 초기화
-        firebase.initializeApp(firebaseConfig);
-        const db = firebase.firestore();
-        
-        console.log('Firebase 연결 완료');
     </script>
 </body>
 </html>
