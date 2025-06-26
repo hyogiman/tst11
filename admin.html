@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>추리 게임 - 관리자</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚙️</text></svg>">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 5px;
+        }
+
+        .header .subtitle {
+            font-size: 1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .section {
+            display: none;
+        }
+
+        .section.active {
+            display: block;
+        }
+
+        /* 로그인 화면 */
+        .login-form {
+            max-width: 400px;
+            margin: 100px auto;
+            background: #f8f9fa;
+            padding: 40px;
+            border-radius: 15px;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #e74c3c;
+        }
+
+        .btn {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+            margin: 5px;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn.primary {
+            width: 100%;
+            padding: 15px;
+        }
+
+        .btn.success {
+            background: linear-gradient(135deg, #27ae60 0%, #229954 100%);
+        }
+
+        .btn.warning {
+            background: linear-gradient(135deg, #f39c12 0%, #e67e22 100%);
+        }
+
+        .btn.danger {
+            background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+        }
+
+        .btn.secondary {
+            background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 대시보드 */
+        .dashboard {
+            display: grid;
+            grid-template-columns: 200px 1fr;
+            gap: 20px;
+            height: calc(100vh - 120px);
+        }
+
+        .sidebar {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            height: fit-content;
+        }
+
+        .sidebar ul {
+            list-style: none;
+        }
+
+        .sidebar li {
+            margin-bottom: 10px;
+        }
+
+        .sidebar a {
+            display: block;
+            padding: 12px 15px;
+            text-decoration: none;
+            color: #495057;
+            border-radius: 8px;
+            transition: all 0.3s;
+        }
+
+        .sidebar a:hover {
+            background: #e9ecef;
+        }
+
+        .sidebar a.active {
+            background: #e74c3c;
+            color: white;
+        }
+
+        .main-content {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        /* 게임 상태 */
+        .game-status {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        .status-indicator {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            margin-right: 10px;
+        }
+
+        .status-active {
+            background: #27ae60;
+        }
+
+        .status-inactive {
+            background: #e74c3c;
+        }
+
+        /* 테이블 */
+        .table-container {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th, td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        th {
+            background: #f8f9fa;
+            font-weight: 600;
+            color: #495057;
+        }
+
+        .status-alive {
+            color: #27ae60;
+            font-weight: 600;
+        }
+
+        .status-dead {
+            color: #e74c3c;
+            font-weight: 600;
+        }
+
+        /* 모달 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+        }
+
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 10px;
+            width: 80%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .close {
+            color: #aaa;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #000;
+        }
+
+        /* 카드 */
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .card h3 {
+            margin-bottom: 15px;
+            color: #2c3e50;
+        }
+
+        /* 입력 그룹 */
+        .input-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .input-group input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        /* 반응형 */
+        @media (max-width: 768px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+            
+            .sidebar {
+                order: 2;
+            }
+            
+            .main-content {
+                order: 1;
+            }
+        }
+
+        /* 알림 */
+        .alert {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>⚙️ 추리 게임 관리자</h1>
+            <p class="subtitle">게임 운영 및 관리 시스템</p>
+        </div>
+
+        <!-- 로그인 섹션 -->
+        <div class="section active" id="loginSection">
+            <div class="login-form">
+                <h2 style="text-align: center; margin-bottom: 30px;">관리자 로그인</h2>
+                
+                <div class="form-group">
+                    <label for="adminId">관리자 ID</label>
+                    <input type="text" id="adminId" placeholder="admin">
+                </div>
+                
+                <div class="form-group">
+                    <label for="adminPw">비밀번호</label>
+                    <input type="password" id="adminPw" placeholder="admin">
+                </div>
+                
+                <button class="btn primary" id="loginBtn">로그인</button>
+            </div>
+        </div>
+
+        <!-- 대시보드 섹션 -->
+        <div class="section" id="dashboardSection">
+            <div class="dashboard">
+                <div class="sidebar">
+                    <ul>
+                        <li><a href="#" class="menu-item active" data-section="overview">📊 개요</a></li>
+                        <li><a href="#" class="menu-item" data-section="gameControl">🎮 게임 제어</a></li>
+                        <li><a href="#" class="menu-item" data-section="playerManage">👥 플레이어 관리</a></li>
+                        <li><a href="#" class="menu-item" data-section="secretCodes">🔐 시크릿 코드</a></li>
+                        <li><a href="#" class="menu-item" data-section="settings">⚙️ 설정</a></li>
+                        <li><a href="#" id="logoutBtn">🚪 로그아웃</a></li>
+                    </ul>
+                </div>
+
+                <div class="main-content">
+                    <!-- 개요 -->
+                    <div class="content-section active" id="overview">
+                        <h2>게임 현황</h2>
+                        
+                        <div class="game-status">
+                            <h3>
+                                <span class="status-indicator" id="gameStatusIndicator"></span>
+                                게임 상태: <span id="gameStatusText">중지됨</span>
+                            </h3>
+                        </div>
+
+                        <div class="card">
+                            <h3>통계</h3>
+                            <p>등록된 플레이어: <strong id="registeredCount">0</strong>명</p>
+                            <p>접속 중인 플레이어: <strong id="activeCount">0</strong>명</p>
+                            <p>생존자: <strong id="aliveCount">0</strong>명</p>
+                            <p>사망자: <strong id="deadCount">0</strong>명</p>
+                        </div>
+                    </div>
+
+                    <!-- 게임 제어 -->
+                    <div class="content-section" id="gameControl">
+                        <h2>게임 제어</h2>
+                        
+                        <div class="card">
+                            <h3>게임 상태 관리</h3>
+                            <div class="game-status">
+                                <span class="status-indicator" id="gameStatusIndicator2"></span>
+                                현재 상태: <span id="gameStatusText2">중지됨</span>
+                            </div>
+                            <button class="btn success" id="startGameBtn">게임 시작</button>
+                            <button class="btn danger" id="stopGameBtn">게임 중지</button>
+                            <button class="btn warning" id="resetGameBtn">게임 초기화</button>
+                        </div>
+                    </div>
+
+                    <!-- 플레이어 관리 -->
+                    <div class="content-section" id="playerManage">
+                        <h2>플레이어 관리</h2>
+                        
+                        <div class="card">
+                            <h3>등록된 플레이어</h3>
+                            <div class="table-container">
+                                <table>
+                                    <thead>
+                                        <tr>
+                                            <th>로그인 코드</th>
+                                            <th>이름</th>
+                                            <th>직위</th>
+                                            <th>역할</th>
+                                            <th>시크릿 코드</th>
+                                            <th>상태</th>
+                                            <th>관리</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="playersTable">
+                                        <!-- 플레이어 데이터가 여기에 표시됩니다 -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 시크릿 코드 관리 -->
+                    <div class="content-section" id="secretCodes">
+                        <h2>시크릿 코드 관리</h2>
+                        
+                        <div class="card">
+                            <h3>시크릿 코드별 정보 설정</h3>
+                            <div id="secretCodesContainer">
+                                <!-- 시크릿 코드 관리 UI가 여기에 표시됩니다 -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 설정 -->
+                    <div class="content-section" id="settings">
+                        <h2>게임 설정</h2>
+                        
+                        <div class="card">
+                            <h3>기본 설정</h3>
+                            <div class="form-group">
+                                <label>최대 제거 횟수</label>
+                                <input type="number" id="maxKillsSetting" value="3" min="1" max="10">
+                            </div>
+                            <div class="form-group">
+                                <label>제거 대기 시간 (초)</label>
+                                <input type="number" id="killTimerSetting" value="180" min="60" max="600">
+                            </div>
+                            <button class="btn primary" id="saveSettingsBtn">설정 저장</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 플레이어 편집 모달 -->
+    <div id="editPlayerModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>플레이어 편집</h3>
+                <span class="close" id="closeEditModal">&times;</span>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>이름</label>
+                    <input type="text" id="editPlayerName">
+                </div>
+                <div class="form-group">
+                    <label>직위</label>
+                    <input type="text" id="editPlayerPosition">
+                </div>
+                <div class="form-group">
+                    <label>시크릿 코드</label>
+                    <input type="text" id="editPlayerSecretCode" maxlength="4">
+                </div>
+                <div class="form-group">
+                    <label>상태</label>
+                    <select id="editPlayerStatus">
+                        <option value="true">생존</option>
+                        <option value="false">사망</option>
+                    </select>
+                </div>
+                <button class="btn primary" id="savePlayerBtn">저장</button>
+                <button class="btn secondary" id="cancelEditBtn">취소</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Firebase SDK -->
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
+    
+    <!-- 스크립트 -->
+    <script src="firebase-config.js"></script>
+    <script src="admin.js"></script>
+</body>
+</html>
