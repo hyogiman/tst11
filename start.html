@@ -639,7 +639,9 @@
                     document.getElementById('logoutNavBtn').style.display = 'flex';
                     
                     setupRoleCard();
-                    setupResultScreen();
+                    setupResultScreen().catch(error => {
+                        console.error('결과 화면 설정 오류:', error);
+                    });
                     setupRealtimeListener();
                     
                     console.log('로그인 완료!');
@@ -690,7 +692,9 @@
                     document.getElementById('codeLoading').style.display = 'none';
                     displayCodeResult(result);
                     document.getElementById('targetCode').value = '';
-                    setupResultScreen();
+                    setupResultScreen().catch(error => {
+                        console.error('결과 화면 업데이트 오류:', error);
+                    });
                 }, 1000);
 
             } catch (error) {
@@ -887,7 +891,9 @@
             });
             
             if (screenName === 'result') {
-                setupResultScreen();
+                setupResultScreen().catch(error => {
+                    console.error('결과 화면 설정 오류:', error);
+                });
             }
         }
 
@@ -910,7 +916,7 @@
             document.getElementById('mySecretCode').textContent = gameState.secretCode;
         }
 
-        // 결과 화면 설정
+        // 결과 화면 설정 (수정)
         async function setupResultScreen() {
             if (gameState.isLoggedIn) {
                 try {
@@ -957,7 +963,9 @@
                         
                         if (data.results && data.results.length !== gameState.results.length) {
                             gameState.results = data.results;
-                            setupResultScreen();
+                            setupResultScreen().catch(error => {
+                                console.error('실시간 결과 업데이트 오류:', error);
+                            });
                         }
                     }
                 });
