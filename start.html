@@ -1,0 +1,1067 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>추리 게임</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 1.8em;
+            margin-bottom: 5px;
+        }
+
+        .header .subtitle {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 20px;
+            padding-bottom: 100px;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* 로그인 화면 */
+        .login-form {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        .btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 역할 카드 */
+        .role-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            margin: 20px 0;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .role-card.detective {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .role-card.criminal {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .role-card.merchant {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            color: #333;
+        }
+
+        .role-title {
+            font-size: 2em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .role-description {
+            font-size: 1.1em;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .secret-code {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            border: 2px dashed rgba(255,255,255,0.5);
+        }
+
+        .secret-code-label {
+            font-size: 0.9em;
+            margin-bottom: 5px;
+            opacity: 0.9;
+        }
+
+        .secret-code-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-align: center;
+        }
+
+        /* 코드 입력 화면 */
+        .code-input-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .code-input-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        /* 결과 목록 */
+        .result-list {
+            margin-top: 20px;
+        }
+
+        .result-item {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .result-item:hover {
+            background: #f8f9fa;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .result-item-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .result-item-subtitle {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .result-item-value {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-weight: 700;
+            color: #27ae60;
+        }
+
+        /* 공격 버튼 */
+        .attack-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            cursor: pointer;
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .attack-btn:hover {
+            background: #c0392b;
+        }
+
+        /* 하단 네비게이션 */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 100%;
+            max-width: 400px;
+            background: white;
+            border-top: 1px solid #e9ecef;
+            display: flex;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }
+
+        .nav-item {
+            flex: 1;
+            padding: 15px 5px;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            border: none;
+            background: none;
+            font-size: 0.85em;
+        }
+
+        .nav-item:hover {
+            background: #f8f9fa;
+        }
+
+        .nav-item.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .nav-icon {
+            font-size: 1.2em;
+            margin-bottom: 3px;
+            display: block;
+        }
+
+        /* 상태 메시지 */
+        .status-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
+        }
+
+        .status-message.warning {
+            background: #fff3cd;
+            color: #856404;
+            border-color: #ffeaa7;
+        }
+
+        /* 타이머 */
+        .death-timer {
+            background: #e74c3c;
+            color: white;
+            padding: 15px;
+            border-radius: 10px;
+            text-align: center;
+            margin: 20px 0;
+            font-size: 1.2em;
+            font-weight: 600;
+        }
+
+        /* 반응형 */
+        @media (max-width: 480px) {
+            .container {
+                width: 100%;
+                border-radius: 0;
+            }
+            
+            .content {
+                padding: 15px;
+            }
+            
+            .nav-item {
+                font-size: 0.75em;
+            }
+        }
+
+        /* 로딩 애니메이션 */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🕵️ 추리 게임</h1>
+            <p class="subtitle">탐정, 범인, 상인의 심리전</p>
+        </div>
+
+        <div class="content">
+            <!-- 로그인 화면 -->
+            <div class="screen active" id="loginScreen">
+                <div class="login-form">
+                    <h2 style="text-align: center; margin-bottom: 20px;">게임 참가</h2>
+                    
+                    <div class="form-group">
+                        <label for="loginCode">로그인 코드</label>
+                        <input type="text" id="loginCode" placeholder="영문+숫자 4자리 입력" maxlength="4" style="text-transform: uppercase;">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="playerName">성명</label>
+                        <input type="text" id="playerName" placeholder="이름을 입력하세요">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="playerPosition">직위</label>
+                        <input type="text" id="playerPosition" placeholder="직위를 입력하세요">
+                    </div>
+                    
+                    <button class="btn" onclick="login()">게임 시작</button>
+                </div>
+
+                <div class="loading" id="loginLoading">
+                    <div class="spinner"></div>
+                    <p>로그인 중...</p>
+                </div>
+            </div>
+
+            <!-- 홈 화면 -->
+            <div class="screen" id="homeScreen">
+                <div id="roleCard" class="role-card">
+                    <!-- 역할 정보가 동적으로 삽입됩니다 -->
+                </div>
+                
+                <div class="status-message" id="gameStatus">
+                    게임이 진행 중입니다. 다른 플레이어들과 상호작용하며 목표를 달성하세요!
+                </div>
+
+                <div id="deathTimer" class="death-timer" style="display: none;">
+                    ⏰ 게임 종료까지: <span id="timerDisplay">3:00</span>
+                </div>
+            </div>
+
+            <!-- 역할/시크릿 코드 화면 -->
+            <div class="screen" id="roleScreen">
+                <h2 style="margin-bottom: 20px;">내 정보</h2>
+                
+                <div class="code-input-section">
+                    <div class="code-input-title">내 역할</div>
+                    <div id="myRole" style="font-size: 1.2em; font-weight: 600; color: #667eea;">-</div>
+                </div>
+
+                <div class="code-input-section">
+                    <div class="code-input-title">나의 시크릿 코드</div>
+                    <div id="mySecretCode" style="font-size: 2em; font-weight: 700; text-align: center; letter-spacing: 3px; color: #e74c3c;">-</div>
+                    <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
+                        상호작용 게임에서 질 경우 상대에게 이 코드를 보여주세요.
+                    </p>
+                </div>
+            </div>
+
+            <!-- 코드 입력 화면 -->
+            <div class="screen" id="codeInputScreen">
+                <h2 style="margin-bottom: 20px;">시크릿 코드 입력</h2>
+                
+                <div class="code-input-section">
+                    <div class="code-input-title">상대방의 시크릿 코드</div>
+                    <div class="form-group">
+                        <input type="text" id="targetCode" placeholder="4자리 코드 입력" maxlength="4" style="text-transform: uppercase;">
+                    </div>
+                    <button class="btn" onclick="submitCode()">코드 확인</button>
+                </div>
+
+                <div class="loading" id="codeLoading">
+                    <div class="spinner"></div>
+                    <p>코드 처리 중...</p>
+                </div>
+
+                <div id="codeResult" style="margin-top: 20px;"></div>
+            </div>
+
+            <!-- 결과 화면 -->
+            <div class="screen" id="resultScreen">
+                <h2 style="margin-bottom: 20px;" id="resultTitle">내 결과</h2>
+                
+                <div id="resultContent">
+                    <!-- 역할별 결과가 동적으로 삽입됩니다 -->
+                </div>
+            </div>
+        </div>
+
+        <!-- 하단 네비게이션 -->
+        <div class="bottom-nav" id="bottomNav" style="display: none;">
+            <button class="nav-item active" onclick="showScreen('home')">
+                <span class="nav-icon">🏠</span>
+                홈
+            </button>
+            <button class="nav-item" onclick="showScreen('role')">
+                <span class="nav-icon">👤</span>
+                역할/S.C
+            </button>
+            <button class="nav-item" onclick="showScreen('codeInput')">
+                <span class="nav-icon">🔢</span>
+                코드입력
+            </button>
+            <button class="nav-item" onclick="showScreen('result')">
+                <span class="nav-icon">📊</span>
+                결과
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // 게임 상태
+        let gameState = {
+            isLoggedIn: false,
+            player: null,
+            role: null,
+            secretCode: null,
+            results: [],
+            isAlive: true,
+            deathTimer: null
+        };
+
+        // 임시 데이터 (실제로는 Firebase에서 가져올 예정)
+        const tempLoginCodes = {
+            'A1B2': { role: 'detective', used: false },
+            'C3D4': { role: 'criminal', used: false },
+            'E5F6': { role: 'merchant', used: false },
+            'G7H8': { role: 'detective', used: false },
+            'I9J0': { role: 'criminal', used: false },
+            'K1L2': { role: 'merchant', used: false }
+        };
+
+        const tempSecretCodes = {
+            'detective': ['DT01', 'DT02', 'DT03'],
+            'criminal': ['CR01', 'CR02', 'CR03'],
+            'merchant': ['MC01', 'MC02', 'MC03']
+        };
+
+        // 역할별 설명
+        const roleDescriptions = {
+            detective: {
+                title: '🔍 탐정',
+                description: '범인을 찾아내는 것이 목표입니다. 다른 플레이어의 시크릿 코드를 수집하여 단서를 모으세요.',
+                className: 'detective'
+            },
+            criminal: {
+                title: '🔪 범인',
+                description: '탐정을 찾아 제거하는 것이 목표입니다. 최대 3명까지 제거할 수 있으며, 탐정을 우선적으로 노리세요.',
+                className: 'criminal'
+            },
+            merchant: {
+                title: '💰 상인',
+                description: '돈을 버는 것이 목표입니다. 다른 플레이어와 거래하여 최대한 많은 돈을 모으세요.',
+                className: 'merchant'
+            }
+        };
+
+        // 로그인 함수
+        async function login() {
+            const loginCode = document.getElementById('loginCode').value.toUpperCase();
+            const playerName = document.getElementById('playerName').value;
+            const playerPosition = document.getElementById('playerPosition').value;
+
+            if (!loginCode || !playerName || !playerPosition) {
+                alert('모든 정보를 입력해주세요.');
+                return;
+            }
+
+            // 로딩 표시
+            document.getElementById('loginLoading').style.display = 'block';
+
+            try {
+                // 임시 검증 로직 (실제로는 Firebase 연동)
+                if (!tempLoginCodes[loginCode]) {
+                    throw new Error('유효하지 않은 로그인 코드입니다.');
+                }
+
+                if (tempLoginCodes[loginCode].used) {
+                    throw new Error('이미 사용된 로그인 코드입니다.');
+                }
+
+                // 플레이어 정보 설정
+                const role = tempLoginCodes[loginCode].role;
+                const secretCode = generateSecretCode(role);
+
+                gameState.player = {
+                    name: playerName,
+                    position: playerPosition,
+                    loginCode: loginCode
+                };
+                gameState.role = role;
+                gameState.secretCode = secretCode;
+                gameState.isLoggedIn = true;
+
+                // 로그인 코드 사용 표시
+                tempLoginCodes[loginCode].used = true;
+
+                // 홈 화면으로 이동
+                setTimeout(() => {
+                    document.getElementById('loginLoading').style.display = 'none';
+                    showScreen('home');
+                    document.getElementById('bottomNav').style.display = 'flex';
+                    setupRoleCard();
+                    setupResultScreen();
+                }, 1000);
+
+            } catch (error) {
+                document.getElementById('loginLoading').style.display = 'none';
+                alert(error.message);
+            }
+        }
+
+        // 시크릿 코드 생성
+        function generateSecretCode(role) {
+            const codes = tempSecretCodes[role];
+            return codes[Math.floor(Math.random() * codes.length)];
+        }
+
+        // 역할 카드 설정
+        function setupRoleCard() {
+            const roleInfo = roleDescriptions[gameState.role];
+            const roleCard = document.getElementById('roleCard');
+            
+            roleCard.className = `role-card ${roleInfo.className}`;
+            roleCard.innerHTML = `
+                <div class="role-title">${roleInfo.title}</div>
+                <div class="role-description">${roleInfo.description}</div>
+                <div class="secret-code">
+                    <div class="secret-code-label">나의 시크릿 코드</div>
+                    <div class="secret-code-value">${gameState.secretCode}</div>
+                </div>
+            `;
+
+            // 역할 정보 화면도 업데이트
+            document.getElementById('myRole').textContent = roleInfo.title;
+            document.getElementById('mySecretCode').textContent = gameState.secretCode;
+        }
+
+        // 화면 전환
+        function showScreen(screenName) {
+            // 모든 화면 숨기기
+            document.querySelectorAll('.screen').forEach(screen => {
+                screen.classList.remove('active');
+            });
+
+            // 네비게이션 활성화 상태 변경
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            // 선택된 화면 보이기
+            const screenMap = {
+                'home': 'homeScreen',
+                'role': 'roleScreen', 
+                'codeInput': 'codeInputScreen',
+                'result': 'resultScreen'
+            };
+
+            document.getElementById(screenMap[screenName]).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // 코드 제출
+        async function submitCode() {
+            const targetCode = document.getElementById('targetCode').value.toUpperCase();
+            
+            if (!targetCode) {
+                alert('시크릿 코드를 입력해주세요.');
+                return;
+            }
+
+            if (!gameState.isAlive) {
+                alert('게임에서 제외되어 코드를 입력할 수 없습니다.');
+                return;
+            }
+
+            document.getElementById('codeLoading').style.display = 'block';
+
+            try {
+                // 코드 처리 로직 (임시)
+                const result = await processSecretCode(targetCode);
+                
+                setTimeout(() => {
+                    document.getElementById('codeLoading').style.display = 'none';
+                    displayCodeResult(result);
+                    document.getElementById('targetCode').value = '';
+                }, 1000);
+
+            } catch (error) {
+                document.getElementById('codeLoading').style.display = 'none';
+                alert(error.message);
+            }
+        }
+
+        // 시크릿 코드 처리
+        async function processSecretCode(targetCode) {
+            // 임시 처리 로직
+            const targetRole = getCodeRole(targetCode);
+            
+            if (!targetRole) {
+                throw new Error('유효하지 않은 시크릿 코드입니다.');
+            }
+
+            let result = {
+                targetCode: targetCode,
+                targetRole: targetRole,
+                timestamp: new Date().toLocaleString()
+            };
+
+            switch (gameState.role) {
+                case 'detective':
+                    if (targetRole === 'merchant') {
+                        result.type = 'clue';
+                        result.title = '상인의 증언';
+                        result.content = generateMerchantTestimony();
+                    } else if (targetRole === 'criminal') {
+                        result.type = 'evidence';
+                        result.title = '결정적 증거';
+                        result.content = generateCriminalEvidence();
+                    }
+                    break;
+
+                case 'criminal':
+                    result.type = 'kill';
+                    result.title = '제거 성공';
+                    result.content = `${targetRole === 'detective' ? '탐정' : '상인'}을 제거했습니다.`;
+                    // 3분 후 상대방 게임 종료 처리 필요
+                    break;
+
+                case 'merchant':
+                    result.type = 'money';
+                    if (targetRole === 'merchant') {
+                        result.amount = Math.floor(Math.random() * 100) + 1;
+                    } else {
+                        result.amount = Math.floor(Math.random() * 100) + 50;
+                    }
+                    result.title = '거래 성공';
+                    result.content = `${result.amount}원을 획득했습니다.`;
+                    break;
+            }
+
+            gameState.results.push(result);
+            setupResultScreen();
+            
+            return result;
+        }
+
+        // 코드로 역할 추정 (임시)
+        function getCodeRole(code) {
+            if (code.startsWith('DT')) return 'detective';
+            if (code.startsWith('CR')) return 'criminal';
+            if (code.startsWith('MC')) return 'merchant';
+            return null;
+        }
+
+        // 상인 증언 생성
+        function generateMerchantTestimony() {
+            const testimonies = [
+                "오늘 아침 사무실 근처에서 수상한 사람을 봤어요.",
+                "어제 늦게까지 남아있던 사람이 있었던 것 같아요.",
+                "복사기 근처에서 이상한 소리가 났어요.",
+                "누군가 다른 사람의 책상을 뒤지고 있었어요."
+            ];
+            return testimonies[Math.floor(Math.random() * testimonies.length)];
+        }
+
+        // 범인 증거 생성
+        function generateCriminalEvidence() {
+            const evidences = [
+                "범인은 왼손잡이일 가능성이 높습니다.",
+                "범인은 IT 부서와 관련이 있을 것입니다.",
+                "범인은 최근 스트레스를 많이 받은 사람입니다.",
+                "범인은 회사 내부 구조를 잘 아는 사람입니다."
+            ];
+            return evidences[Math.floor(Math.random() * evidences.length)];
+        }
+
+        // 코드 결과 표시
+        function displayCodeResult(result) {
+            const resultDiv = document.getElementById('codeResult');
+            let html = `
+                <div class="status-message">
+                    <strong>${result.title}</strong><br>
+                    ${result.content}
+                </div>
+            `;
+            resultDiv.innerHTML = html;
+        }
+
+        // 결과 화면 설정
+        function setupResultScreen() {
+            const resultContent = document.getElementById('resultContent');
+            const resultTitle = document.getElementById('resultTitle');
+            
+            switch (gameState.role) {
+                case 'detective':
+                    resultTitle.textContent = '🔍 수집한 단서들';
+                    displayDetectiveResults(resultContent);
+                    break;
+                case 'criminal':
+                    resultTitle.textContent = '🔪 제거 기록';
+                    displayCriminalResults(resultContent);
+                    break;
+                case 'merchant':
+                    resultTitle.textContent = '💰 수익 현황';
+                    displayMerchantResults(resultContent);
+                    break;
+            }
+        }
+
+        // 탐정 결과 표시
+        function displayDetectiveResults(container) {
+            const clues = gameState.results.filter(r => r.type === 'clue' || r.type === 'evidence');
+            
+            if (clues.length === 0) {
+                container.innerHTML = '<p style="text-align: center; color: #666;">아직 수집한 단서가 없습니다.</p>';
+                return;
+            }
+
+            let html = '<div class="result-list">';
+            clues.forEach(clue => {
+                html += `
+                    <div class="result-item" onclick="showClueDetail('${clue.title}', '${clue.content}')">
+                        <div class="result-item-title">${clue.title}</div>
+                        <div class="result-item-subtitle">${clue.timestamp}</div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            
+            container.innerHTML = html;
+        }
+
+        // 범인 결과 표시
+        function displayCriminalResults(container) {
+            const kills = gameState.results.filter(r => r.type === 'kill');
+            const remainingKills = 3 - kills.length;
+            
+            let html = `
+                <div class="status-message">
+                    남은 제거 기회: ${remainingKills}회
+                </div>
+            `;
+
+            if (kills.length === 0) {
+                html += '<p style="text-align: center; color: #666;">아직 제거한 대상이 없습니다.</p>';
+            } else {
+                html += '<div class="result-list">';
+                kills.forEach(kill => {
+                    html += `
+                        <div class="result-item">
+                            <div class="result-item-title">${kill.content}</div>
+                            <div class="result-item-subtitle">${kill.timestamp}</div>
+                            <button class="attack-btn" onclick="executeKill('${kill.targetCode}')">공격</button>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            
+            container.innerHTML = html;
+        }
+
+        // 상인 결과 표시
+        function displayMerchantResults(container) {
+            const transactions = gameState.results.filter(r => r.type === 'money');
+            const totalMoney = transactions.reduce((sum, t) => sum + t.amount, 0);
+            
+            let html = `
+                <div class="status-message">
+                    총 수익: ${totalMoney}원
+                </div>
+            `;
+
+            if (transactions.length === 0) {
+                html += '<p style="text-align: center; color: #666;">아직 거래 기록이 없습니다.</p>';
+            } else {
+                html += '<div class="result-list">';
+                transactions.forEach(transaction => {
+                    html += `
+                        <div class="result-item">
+                            <div class="result-item-title">거래 완료</div>
+                            <div class="result-item-subtitle">${transaction.timestamp}</div>
+                            <div class="result-item-value">+${transaction.amount}원</div>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            
+            container.innerHTML = html;
+        }
+
+        // 단서 상세 보기
+        function showClueDetail(title, content) {
+            alert(`${title}\n\n${content}`);
+        }
+
+        // 공격 실행
+        function executeKill(targetCode) {
+            if (confirm('정말로 이 대상을 제거하시겠습니까? 3분 후 대상이 게임에서 제외됩니다.')) {
+                // 실제로는 Firebase에서 해당 플레이어의 상태를 변경
+                alert('제거 명령이 실행되었습니다. 3분 후 대상이 게임에서 제외됩니다.');
+                
+                // 로컬에서 즉시 결과 업데이트
+                setupResultScreen();
+            }
+        }
+
+        // 사망 타이머 시작
+        function startDeathTimer() {
+            gameState.isAlive = false;
+            let timeLeft = 180; // 3분 = 180초
+            
+            const timerDisplay = document.getElementById('timerDisplay');
+            const deathTimer = document.getElementById('deathTimer');
+            deathTimer.style.display = 'block';
+            
+            gameState.deathTimer = setInterval(() => {
+                const minutes = Math.floor(timeLeft / 60);
+                const seconds = timeLeft % 60;
+                timerDisplay.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                
+                timeLeft--;
+                
+                if (timeLeft < 0) {
+                    clearInterval(gameState.deathTimer);
+                    endGame();
+                }
+            }, 1000);
+        }
+
+        // 게임 종료
+        function endGame() {
+            alert('게임에서 제외되었습니다.');
+            document.getElementById('bottomNav').style.display = 'none';
+            document.getElementById('gameStatus').innerHTML = `
+                <div class="status-message error">
+                    게임에서 제외되었습니다. 더 이상 참여할 수 없습니다.
+                </div>
+            `;
+        }
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            // 로그인 코드 입력 시 자동 대문자 변환
+            document.getElementById('loginCode').addEventListener('input', function(e) {
+                e.target.value = e.target.value.toUpperCase();
+            });
+            
+            // 시크릿 코드 입력 시 자동 대문자 변환
+            document.getElementById('targetCode').addEventListener('input', function(e) {
+                e.target.value = e.target.value.toUpperCase();
+            });
+            
+            // Enter 키로 로그인
+            document.getElementById('playerPosition').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    login();
+                }
+            });
+            
+            // Enter 키로 코드 제출
+            document.getElementById('targetCode').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    submitCode();
+                }
+            });
+        });
+
+        // Firebase 연동 함수들 (실제 구현 시 사용)
+        
+        // Firebase 초기화 (실제 config 필요)
+        /*
+        const firebaseConfig = {
+            apiKey: "your-api-key",
+            authDomain: "your-project.firebaseapp.com",
+            databaseURL: "your-database-url",
+            projectId: "your-project-id",
+            storageBucket: "your-project.appspot.com",
+            messagingSenderId: "your-sender-id",
+            appId: "your-app-id"
+        };
+        
+        // Firebase 초기화
+        firebase.initializeApp(firebaseConfig);
+        const db = firebase.firestore();
+        */
+
+        // 실제 로그인 함수 (Firebase 사용)
+        /*
+        async function loginWithFirebase(loginCode, playerName, playerPosition) {
+            try {
+                // 로그인 코드 검증
+                const codeDoc = await db.collection('loginCodes').doc(loginCode).get();
+                
+                if (!codeDoc.exists || codeDoc.data().used) {
+                    throw new Error('유효하지 않거나 이미 사용된 코드입니다.');
+                }
+                
+                // 플레이어 등록
+                const playerData = {
+                    name: playerName,
+                    position: playerPosition,
+                    role: codeDoc.data().role,
+                    secretCode: generateSecretCode(codeDoc.data().role),
+                    isAlive: true,
+                    results: [],
+                    loginTime: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                await db.collection('players').doc(loginCode).set(playerData);
+                
+                // 로그인 코드 사용 표시
+                await db.collection('loginCodes').doc(loginCode).update({
+                    used: true,
+                    usedBy: playerName,
+                    usedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                return playerData;
+                
+            } catch (error) {
+                throw error;
+            }
+        }
+        */
+
+        // 실제 코드 제출 함수 (Firebase 사용)
+        /*
+        async function submitCodeWithFirebase(targetCode) {
+            try {
+                // 대상 플레이어 찾기
+                const playersSnapshot = await db.collection('players')
+                    .where('secretCode', '==', targetCode)
+                    .get();
+                
+                if (playersSnapshot.empty) {
+                    throw new Error('유효하지 않은 시크릿 코드입니다.');
+                }
+                
+                const targetPlayer = playersSnapshot.docs[0].data();
+                const targetPlayerId = playersSnapshot.docs[0].id;
+                
+                // 결과 처리
+                const result = await processCodeResult(gameState.role, targetPlayer.role);
+                
+                // 내 결과 저장
+                await db.collection('players').doc(gameState.player.loginCode).update({
+                    results: firebase.firestore.FieldValue.arrayUnion(result)
+                });
+                
+                // 범인의 공격인 경우 대상 플레이어 상태 변경
+                if (gameState.role === 'criminal') {
+                    setTimeout(async () => {
+                        await db.collection('players').doc(targetPlayerId).update({
+                            isAlive: false,
+                            deathTime: firebase.firestore.FieldValue.serverTimestamp()
+                        });
+                    }, 180000); // 3분 후
+                }
+                
+                return result;
+                
+            } catch (error) {
+                throw error;
+            }
+        }
+        */
+
+        // 실시간 상태 감지 (Firebase 사용)
+        /*
+        function setupRealtimeListener() {
+            db.collection('players').doc(gameState.player.loginCode)
+                .onSnapshot((doc) => {
+                    if (doc.exists) {
+                        const data = doc.data();
+                        if (!data.isAlive && gameState.isAlive) {
+                            startDeathTimer();
+                        }
+                    }
+                });
+        }
+        */
+    </script>
+
+    <!-- Firebase SDK (실제 사용 시 주석 해제) -->
+    <!--
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.0.0/firebase-firestore-compat.js"></script>
+    -->
+</body>
+</html>
