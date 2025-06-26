@@ -388,7 +388,7 @@
                         <input type="text" id="playerPosition" placeholder="직위를 입력하세요">
                     </div>
                     
-                    <button class="btn" onclick="login()">게임 시작</button>
+                    <button class="btn" id="loginButton">게임 시작</button>
                 </div>
 
                 <div class="loading" id="loginLoading">
@@ -435,7 +435,7 @@
                     <div class="form-group">
                         <input type="text" id="targetCode" placeholder="4자리 코드 입력" maxlength="4" style="text-transform: uppercase;">
                     </div>
-                    <button class="btn" onclick="submitCode()">코드 확인</button>
+                    <button class="btn" id="submitCodeButton">코드 확인</button>
                 </div>
 
                 <div class="loading" id="codeLoading">
@@ -458,23 +458,23 @@
 
         <!-- 하단 네비게이션 -->
         <div class="bottom-nav" id="bottomNav">
-            <button class="nav-item active" onclick="showScreen('home'); return false;">
+            <button class="nav-item active" id="homeNavBtn">
                 <span class="nav-icon">🏠</span>
                 홈
             </button>
-            <button class="nav-item disabled" onclick="showScreen('role'); return false;" id="roleTab">
+            <button class="nav-item disabled" id="roleNavBtn">
                 <span class="nav-icon">👤</span>
                 역할/S.C
             </button>
-            <button class="nav-item disabled" onclick="showScreen('codeInput'); return false;" id="codeInputTab">
+            <button class="nav-item disabled" id="codeInputNavBtn">
                 <span class="nav-icon">🔢</span>
                 코드입력
             </button>
-            <button class="nav-item disabled" onclick="showScreen('result'); return false;" id="resultTab">
+            <button class="nav-item disabled" id="resultNavBtn">
                 <span class="nav-icon">📊</span>
                 결과
             </button>
-            <button class="nav-item" onclick="logout(); return false;" id="logoutTab" style="display: none;">
+            <button class="nav-item" id="logoutNavBtn" style="display: none;">
                 <span class="nav-icon">🚪</span>
                 로그아웃
             </button>
@@ -633,10 +633,10 @@
                     bottomNav.style.display = 'flex';
                     
                     // 모든 탭 활성화
-                    document.getElementById('roleTab').classList.remove('disabled');
-                    document.getElementById('codeInputTab').classList.remove('disabled');
-                    document.getElementById('resultTab').classList.remove('disabled');
-                    document.getElementById('logoutTab').style.display = 'flex';
+                    document.getElementById('roleNavBtn').classList.remove('disabled');
+                    document.getElementById('codeInputNavBtn').classList.remove('disabled');
+                    document.getElementById('resultNavBtn').classList.remove('disabled');
+                    document.getElementById('logoutNavBtn').style.display = 'flex';
                     
                     setupRoleCard();
                     setupResultScreen();
@@ -993,8 +993,9 @@
 
             let html = '<div class="result-list">';
             clues.forEach((clue) => {
+                const safeContent = clue.content.replace(/'/g, "&apos;").replace(/"/g, "&quot;");
                 html += `
-                    <div class="result-item" onclick="showClueDetail('${clue.title}', '${clue.content.replace(/'/g, "\\'")}')">
+                    <div class="result-item" onclick="showClueDetail('${clue.title}', '${safeContent}')">
                         <div class="result-item-title">${clue.title}</div>
                         <div class="result-item-subtitle">${clue.timestamp}</div>
                     </div>
@@ -1097,6 +1098,17 @@
         // 페이지 로드 시 초기화
         document.addEventListener('DOMContentLoaded', function() {
             console.log('페이지 로드 완료');
+            
+            // 버튼 이벤트 리스너 등록
+            document.getElementById('loginButton').addEventListener('click', login);
+            document.getElementById('submitCodeButton').addEventListener('click', submitCode);
+            
+            // 네비게이션 버튼 이벤트 리스너 등록
+            document.getElementById('homeNavBtn').addEventListener('click', () => showScreen('home'));
+            document.getElementById('roleNavBtn').addEventListener('click', () => showScreen('role'));
+            document.getElementById('codeInputNavBtn').addEventListener('click', () => showScreen('codeInput'));
+            document.getElementById('resultNavBtn').addEventListener('click', () => showScreen('result'));
+            document.getElementById('logoutNavBtn').addEventListener('click', logout);
             
             // 로그인 코드 입력 시 자동 대문자 변환
             document.getElementById('loginCode').addEventListener('input', function(e) {
