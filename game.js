@@ -82,11 +82,76 @@ function generateCriminalEvidence() {
     return evidences[Math.floor(Math.random() * evidences.length)];
 }
 
-// 메인 게임 함수들
-async function login() {
-    console.log('login 함수 호출됨');
+// 간편 로그인 함수 (이미 등록된 사용자)
+async function quickLogin() {
+    console.log('간편 로그인 시도');
     
-    const loginCode = document.getElementById('loginCode').value.toUpperCase();
+    const loginCode = document.getElementById('quickLoginCode').value.toUpperCase();
+
+    if (!loginCode) {
+        alert('로그인 코드를 입력해주세요.');
+        return;
+    }
+
+    document.getElementById('loginLoading').style.display = 'block';
+    document.getElementById('loadingText').textContent = '로그인 중...';
+
+    try {
+        // 등록된 사용자 정보 확인
+        const userDoc = await db.collection('registeredUsers').doc(loginCode).get();
+        
+        if (!userDoc.exists) {
+            throw new Error('등록되지 않은 코드입니다. 먼저 등록해주세요.');
+        }
+        
+        const userData = userDoc.data();
+        
+        // 현재 접속 중인지 확인
+        const activePlayerDoc = await db.collection('activePlayers').doc(loginCode).get();
+        if (activePlayerDoc.exists && activePlayerDoc.data().isActive) {
+            throw new Error('이미 접속 중인 코드입니다.');
+        }
+
+        // 활성 플레이어로 등록
+        await db.collection('activePlayers').doc(loginCode).set({
+            name: userData.name,
+            position: userData.position,
+            role: userData.role,
+            secretCode: userData.secretCode,
+            isAlive: true,
+            isActive: true,
+            results: [],
+            killCount: 0,
+            money: 0,
+            loginTime: firebase.firestore.FieldValue.serverTimestamp()
+        });
+
+        // 게임 상태 설정
+        gameState.player = {
+            name: userData.name,
+            position: userData.position,
+            loginCode: loginCode
+        };
+        gameState.role = userData.role;
+        gameState.secretCode = userData.secretCode;
+        gameState.isLoggedIn = true;
+
+        setTimeout(() => {
+            completeLogin();
+        }, 1000);
+
+    } catch (error) {
+        document.getElementById('loginLoading').style.display = 'none';
+        alert(error.message);
+        console.error('간편 로그인 오류:', error);
+    }
+}
+
+// 등록 함수 (처음 사용자)
+async function register() {
+    console.log('등록 시도');
+    
+    const loginCode = document.getElementById('registerCode').value.toUpperCase();
     const playerName = document.getElementById('playerName').value;
     const playerPosition = document.getElementById('playerPosition').value;
 
@@ -96,8 +161,10 @@ async function login() {
     }
 
     document.getElementById('loginLoading').style.display = 'block';
+    document.getElementById('loadingText').textContent = '등록 중...';
 
     try {
+        // 로그인 코드 유효성 검증
         const codeDoc = await db.collection('loginCodes').doc(loginCode).get();
         
         if (!codeDoc.exists) {
@@ -106,32 +173,45 @@ async function login() {
         
         const codeData = codeDoc.data();
         
-        if (codeData.used) {
-            throw new Error('이미 사용된 로그인 코드입니다.');
+        // 이미 등록된 사용자인지 확인
+        const existingUserDoc = await db.collection('registeredUsers').doc(loginCode).get();
+        if (existingUserDoc.exists) {
+            throw new Error('이미 등록된 코드입니다.');
         }
 
+        // 영구 시크릿 코드 생성
         const secretCode = await generateSecretCodeFromFirebase(codeData.role);
 
-        const playerData = {
+        // 등록된 사용자로 저장 (영구 저장)
+        const userData = {
             name: playerName,
             position: playerPosition,
             role: codeData.role,
             secretCode: secretCode,
+            registeredAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection('registeredUsers').doc(loginCode).set(userData);
+
+        // 활성 플레이어로도 등록
+        await db.collection('activePlayers').doc(loginCode).set({
+            ...userData,
             isAlive: true,
+            isActive: true,
             results: [],
             killCount: 0,
             money: 0,
             loginTime: firebase.firestore.FieldValue.serverTimestamp()
-        };
+        });
 
-        await db.collection('players').doc(loginCode).set(playerData);
-
+        // 로그인 코드 사용 표시
         await db.collection('loginCodes').doc(loginCode).update({
             used: true,
             usedBy: playerName,
             usedAt: firebase.firestore.FieldValue.serverTimestamp()
         });
 
+        // 게임 상태 설정
         gameState.player = {
             name: playerName,
             position: playerPosition,
@@ -142,35 +222,51 @@ async function login() {
         gameState.isLoggedIn = true;
 
         setTimeout(() => {
-            document.getElementById('loginLoading').style.display = 'none';
-            
-            // 로그인 화면 숨기기
-            document.getElementById('loginScreen').classList.remove('active');
-            document.getElementById('homeScreen').classList.add('active');
-            
-            // 하단 네비게이션 표시 및 활성화
-            const bottomNav = document.getElementById('bottomNav');
-            bottomNav.style.display = 'flex';
-            
-            document.getElementById('roleNavBtn').classList.remove('disabled');
-            document.getElementById('codeInputNavBtn').classList.remove('disabled');
-            document.getElementById('resultNavBtn').classList.remove('disabled');
-            document.getElementById('logoutNavBtn').style.display = 'flex';
-            
-            setupRoleCard();
-            setupResultScreen().catch(error => {
-                console.error('결과 화면 설정 오류:', error);
-            });
-            setupRealtimeListener();
-            
-            console.log('로그인 완료!');
+            completeLogin();
         }, 1000);
 
     } catch (error) {
         document.getElementById('loginLoading').style.display = 'none';
         alert(error.message);
-        console.error('로그인 오류:', error);
+        console.error('등록 오류:', error);
     }
+}
+
+// 로그인 완료 처리 공통 함수
+function completeLogin() {
+    document.getElementById('loginLoading').style.display = 'none';
+    
+    // 로그인 화면 숨기기
+    document.getElementById('loginScreen').classList.remove('active');
+    document.getElementById('homeScreen').classList.add('active');
+    
+    // 하단 네비게이션 표시 및 활성화
+    const bottomNav = document.getElementById('bottomNav');
+    bottomNav.style.display = 'flex';
+    
+    document.getElementById('roleNavBtn').classList.remove('disabled');
+    document.getElementById('codeInputNavBtn').classList.remove('disabled');
+    document.getElementById('resultNavBtn').classList.remove('disabled');
+    document.getElementById('logoutNavBtn').style.display = 'flex';
+    
+    setupRoleCard();
+    setupResultScreen().catch(error => {
+        console.error('결과 화면 설정 오류:', error);
+    });
+    setupRealtimeListener();
+    
+    console.log('로그인 완료!');
+}
+
+// 폼 전환 함수들
+function showRegisterForm() {
+    document.getElementById('quickLoginForm').style.display = 'none';
+    document.getElementById('registerForm').style.display = 'block';
+}
+
+function showLoginForm() {
+    document.getElementById('registerForm').style.display = 'none';
+    document.getElementById('quickLoginForm').style.display = 'block';
 }
 
 async function logout() {
@@ -180,13 +276,11 @@ async function logout() {
 
     try {
         if (gameState.player && gameState.player.loginCode) {
-            await db.collection('loginCodes').doc(gameState.player.loginCode).update({
-                used: false,
-                usedBy: null,
-                usedAt: null
+            // 활성 플레이어에서만 제거 (등록 정보는 유지)
+            await db.collection('activePlayers').doc(gameState.player.loginCode).update({
+                isActive: false,
+                logoutTime: firebase.firestore.FieldValue.serverTimestamp()
             });
-
-            await db.collection('players').doc(gameState.player.loginCode).delete();
         }
 
         // 게임 상태 완전 초기화
@@ -224,10 +318,15 @@ async function logout() {
         document.getElementById('homeNavBtn').classList.add('active');
 
         // 모든 입력 필드 초기화
-        document.getElementById('loginCode').value = '';
+        document.getElementById('quickLoginCode').value = '';
+        document.getElementById('registerCode').value = '';
         document.getElementById('playerName').value = '';
         document.getElementById('playerPosition').value = '';
         document.getElementById('targetCode').value = '';
+        
+        // 폼 상태 초기화 (간편 로그인 폼 표시)
+        document.getElementById('registerForm').style.display = 'none';
+        document.getElementById('quickLoginForm').style.display = 'block';
         
         // 결과 화면 내용 완전 초기화
         document.getElementById('codeResult').innerHTML = '';
@@ -268,8 +367,10 @@ async function submitCode() {
     document.getElementById('codeLoading').style.display = 'block';
 
     try {
-        const playersSnapshot = await db.collection('players')
+        // 활성 플레이어에서 시크릿 코드로 검색
+        const playersSnapshot = await db.collection('activePlayers')
             .where('secretCode', '==', targetCode)
+            .where('isActive', '==', true)
             .get();
         
         if (playersSnapshot.empty) {
@@ -308,7 +409,6 @@ async function submitCode() {
 async function processSecretCode(targetPlayer, targetPlayerId) {
     let result = {
         targetCode: targetPlayer.secretCode,
-        targetRole: targetPlayer.role,
         targetName: targetPlayer.name,
         targetPlayerId: targetPlayerId,
         timestamp: new Date().toLocaleString('ko-KR')
@@ -317,7 +417,7 @@ async function processSecretCode(targetPlayer, targetPlayerId) {
     const myPlayerId = gameState.player.loginCode;
     
     try {
-        const myPlayerDoc = await db.collection('players').doc(myPlayerId).get();
+        const myPlayerDoc = await db.collection('activePlayers').doc(myPlayerId).get();
         const myPlayerData = myPlayerDoc.data();
 
         switch (gameState.role) {
@@ -339,6 +439,54 @@ async function processSecretCode(targetPlayer, targetPlayerId) {
 
             case 'criminal':
                 const currentKillCount = myPlayerData.killCount || 0;
+                
+                if (currentKillCount >= 3) {
+                    throw new Error('이미 최대 제거 횟수(3회)에 도달했습니다.');
+                }
+
+                result.type = 'kill';
+                result.title = '제거 대상 확보';
+                // 범인은 상대방의 역할을 모르게 함
+                result.content = `${targetPlayer.name}을(를) 제거할 수 있습니다.`;
+                result.canKill = true;
+                result.executed = false;
+                // 실제 역할은 내부적으로만 저장 (UI에 표시 안 함)
+                result.targetRole = targetPlayer.role;
+                
+                await db.collection('activePlayers').doc(myPlayerId).update({
+                    killCount: currentKillCount + 1
+                });
+                
+                break;
+
+            case 'merchant':
+                result.type = 'money';
+                if (targetPlayer.role === 'merchant') {
+                    result.amount = Math.floor(Math.random() * 100) + 1;
+                } else {
+                    result.amount = Math.floor(Math.random() * 100) + 50;
+                }
+                result.title = '거래 성공';
+                result.content = `${result.amount}원을 획득했습니다.`;
+                
+                const currentMoney = myPlayerData.money || 0;
+                await db.collection('activePlayers').doc(myPlayerId).update({
+                    money: currentMoney + result.amount
+                });
+                break;
+        }
+
+        await db.collection('activePlayers').doc(myPlayerId).update({
+            results: firebase.firestore.FieldValue.arrayUnion(result)
+        });
+
+        gameState.results.push(result);
+        return result;
+    } catch (error) {
+        console.error('시크릿 코드 처리 오류:', error);
+        throw error;
+    }
+}PlayerData.killCount || 0;
                 
                 if (currentKillCount >= 3) {
                     throw new Error('이미 최대 제거 횟수(3회)에 도달했습니다.');
