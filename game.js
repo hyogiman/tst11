@@ -82,9 +82,59 @@ function generateCriminalEvidence() {
     return evidences[Math.floor(Math.random() * evidences.length)];
 }
 
+// 시크릿 코드별 맞춤 정보 가져오기
+async function getSecretCodeInfo(secretCode, defaultTitle, defaultContent) {
+    try {
+        const infoDoc = await db.collection('gameSettings').doc('secretCodesInfo').get();
+        
+        if (infoDoc.exists) {
+            const allInfo = infoDoc.data();
+            const codeInfo = allInfo[secretCode];
+            
+            if (codeInfo && codeInfo.title && codeInfo.content) {
+                return {
+                    title: codeInfo.title,
+                    content: codeInfo.content
+                };
+            }
+        }
+        
+        // 관리자가 설정하지 않은 경우 기본값 사용
+        return {
+            title: defaultTitle,
+            content: defaultContent
+        };
+        
+    } catch (error) {
+        console.error('시크릿 코드 정보 가져오기 오류:', error);
+        return {
+            title: defaultTitle,
+            content: defaultContent
+        };
+    }
+}
+
+// 게임 상태 확인
+async function checkGameStatus() {
+    try {
+        const gameDoc = await db.collection('gameSettings').doc('gameStatus').get();
+        return gameDoc.exists ? gameDoc.data().isActive : false;
+    } catch (error) {
+        console.error('게임 상태 확인 오류:', error);
+        return false;
+    }
+}
+
 // 간편 로그인 함수 (이미 등록된 사용자)
 async function quickLogin() {
     console.log('간편 로그인 시도');
+    
+    // 게임 상태 확인
+    const isGameActive = await checkGameStatus();
+    if (!isGameActive) {
+        alert('게임이 아직 시작되지 않았습니다. 관리자가 게임을 시작할 때까지 기다려주세요.');
+        return;
+    }
     
     const loginCode = document.getElementById('quickLoginCode').value.toUpperCase();
 
@@ -150,6 +200,13 @@ async function quickLogin() {
 // 등록 함수 (처음 사용자)
 async function register() {
     console.log('등록 시도');
+    
+    // 게임 상태 확인
+    const isGameActive = await checkGameStatus();
+    if (!isGameActive) {
+        alert('게임이 아직 시작되지 않았습니다. 관리자가 게임을 시작할 때까지 기다려주세요.');
+        return;
+    }
     
     const loginCode = document.getElementById('registerCode').value.toUpperCase();
     const playerName = document.getElementById('playerName').value;
@@ -423,15 +480,76 @@ async function processSecretCode(targetPlayer, targetPlayerId) {
         switch (gameState.role) {
             case 'detective':
                 if (targetPlayer.role === 'merchant') {
+                    // 상인의 시크릿 코드별 맞춤 정보 가져오기
+                    const merchantInfo = await getSecretCodeInfo(
+                        targetPlayer.secretCode,
+                        '상인의 증언',
+                        generateMerchantTestimony()
+                    );
                     result.type = 'clue';
-                    result.title = '상인의 증언';
-                    result.content = generateMerchantTestimony();
+                    result.title = merchantInfo.title;
+                    result.content = merchantInfo.content;
                 } else if (targetPlayer.role === 'criminal') {
+                    // 범인의 시크릿 코드별 맞춤 정보 가져오기
+                    const criminalInfo = await getSecretCodeInfo(
+                        targetPlayer.secretCode,
+                        '결정적 증거',
+                        generateCriminalEvidence()
+                    );
                     result.type = 'evidence';
-                    result.title = '결정적 증거';
-                    result.content = generateCriminalEvidence();
+                    result.title = criminalInfo.title;
+                    result.content = criminalInfo.content;
                 } else {
+                    // 동료 탐정의 시크릿 코드별 맞춤 정보 가져오기
+                    const detectiveInfo = await getSecretCodeInfo(
+                        targetPlayer.secretCode,
+                        '동료 탐정 정보',
+                        '동료 탐정과 정보를 공유했습니다.'
+                    );
                     result.type = 'clue';
+                    result.title = detectiveInfo.title;
+                    result.content = detectiveInfo.content;
+                }
+                break;
+
+            case 'criminal':
+                const currentKillCount = myPlayerData.killCount || 0;
+                
+                if (currentKillCount >= 3) {
+                    throw new Error('이미 최대 제거 횟수(3회)에 도달했습니다.');
+                }
+
+                result.type = 'kill';
+                result.title = '제거 대상 확보';
+                // 범인은 상대방의 역할을 모르게 함
+                result.content = `${targetPlayer.name}을(를) 제거할 수 있습니다.`;
+                result.canKill = true;
+                result.executed = false;
+                // 실제 역할은 내부적으로만 저장 (UI에 표시 안 함)
+                result.targetRole = targetPlayer.role;
+                
+                await db.collection('activePlayers').doc(myPlayerId).update({
+                    killCount: currentKillCount + 1
+                });
+                
+                break;
+
+            case 'merchant':
+                result.type = 'money';
+                if (targetPlayer.role === 'merchant') {
+                    result.amount = Math.floor(Math.random() * 100) + 1;
+                } else {
+                    result.amount = Math.floor(Math.random() * 100) + 50;
+                }
+                result.title = '거래 성공';
+                result.content = `${result.amount}원을 획득했습니다.`;
+                
+                const currentMoney = myPlayerData.money || 0;
+                await db.collection('activePlayers').doc(myPlayerId).update({
+                    money: currentMoney + result.amount
+                });
+                break;
+        }result.type = 'clue';
                     result.title = '동료 탐정 정보';
                     result.content = '동료 탐정과 정보를 공유했습니다.';
                 }
