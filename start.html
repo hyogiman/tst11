@@ -594,33 +594,63 @@
                 gameState.secretCode = secretCode;
                 gameState.isLoggedIn = true;
 
-                // 홈 화면으로 이동
+                // 홈 화면으로 이동 (크롬 호환성 개선)
                 setTimeout(() => {
-                    document.getElementById('loginLoading').style.display = 'none';
-                    
-                    // 화면 전환
-                    document.querySelectorAll('.screen').forEach(screen => {
-                        screen.classList.remove('active');
-                    });
-                    document.getElementById('homeScreen').classList.add('active');
-                    
-                    // 하단 네비게이션 표시
-                    const bottomNav = document.getElementById('bottomNav');
-                    bottomNav.style.display = 'flex';
-                    
-                    // 홈 탭 활성화
-                    document.querySelectorAll('.nav-item').forEach(item => {
-                        item.classList.remove('active');
-                    });
-                    const homeButton = bottomNav.querySelector('button:first-child');
-                    homeButton.classList.add('active');
-                    
-                    // 역할 카드와 결과 화면 설정
-                    setupRoleCard();
-                    setupResultScreen();
-                    setupRealtimeListener(); // 실시간 감지 시작
-                    
-                    console.log('로그인 완료, 하단 네비게이션 활성화');
+                    try {
+                        document.getElementById('loginLoading').style.display = 'none';
+                        console.log('로딩 화면 숨김 완료');
+                        
+                        // 화면 전환
+                        const allScreens = document.querySelectorAll('.screen');
+                        allScreens.forEach(screen => {
+                            screen.classList.remove('active');
+                        });
+                        
+                        const homeScreen = document.getElementById('homeScreen');
+                        if (homeScreen) {
+                            homeScreen.classList.add('active');
+                            console.log('홈 화면 활성화 완료');
+                        }
+                        
+                        // 하단 네비게이션 강제 표시
+                        const bottomNav = document.getElementById('bottomNav');
+                        if (bottomNav) {
+                            bottomNav.style.display = 'flex';
+                            bottomNav.style.visibility = 'visible';
+                            bottomNav.style.opacity = '1';
+                            console.log('하단 네비게이션 표시 완료');
+                        }
+                        
+                        // 홈 탭 활성화
+                        const navItems = document.querySelectorAll('.nav-item');
+                        navItems.forEach((item, index) => {
+                            item.classList.remove('active');
+                            if (index === 0) { // 첫 번째 버튼 (홈)
+                                item.classList.add('active');
+                            }
+                        });
+                        
+                        // 역할 카드와 결과 화면 설정
+                        if (typeof setupRoleCard === 'function') {
+                            setupRoleCard();
+                            console.log('역할 카드 설정 완료');
+                        }
+                        
+                        if (typeof setupResultScreen === 'function') {
+                            setupResultScreen();
+                            console.log('결과 화면 설정 완료');
+                        }
+                        
+                        if (typeof setupRealtimeListener === 'function') {
+                            setupRealtimeListener();
+                            console.log('실시간 리스너 설정 완료');
+                        }
+                        
+                        console.log('🎉 로그인 완료! 모든 설정 완료됨');
+                        
+                    } catch (error) {
+                        console.error('로그인 후 설정 오류:', error);
+                    }
                 }, 1000);
 
             } catch (error) {
@@ -1158,49 +1188,56 @@
             document.getElementById('mySecretCode').textContent = gameState.secretCode;
         }
 
-        // 화면 전환 함수 (완전히 새로 작성)
+        // 화면 전환 함수 (크롬 호환성 개선)
         function showScreen(screenName) {
-            console.log('화면 전환:', screenName);
-            
-            // 모든 화면 숨기기
-            const screens = ['loginScreen', 'homeScreen', 'roleScreen', 'codeInputScreen', 'resultScreen'];
-            screens.forEach(screenId => {
-                const screen = document.getElementById(screenId);
-                if (screen) {
-                    screen.classList.remove('active');
+            try {
+                console.log('화면 전환:', screenName);
+                
+                // 모든 화면 숨기기
+                const screens = ['loginScreen', 'homeScreen', 'roleScreen', 'codeInputScreen', 'resultScreen'];
+                screens.forEach(screenId => {
+                    const screen = document.getElementById(screenId);
+                    if (screen) {
+                        screen.classList.remove('active');
+                    }
+                });
+
+                // 선택된 화면 보이기
+                const screenMap = {
+                    'home': 'homeScreen',
+                    'role': 'roleScreen', 
+                    'codeInput': 'codeInputScreen',
+                    'result': 'resultScreen'
+                };
+
+                const targetScreen = document.getElementById(screenMap[screenName]);
+                if (targetScreen) {
+                    targetScreen.classList.add('active');
+                    console.log('화면 활성화:', screenMap[screenName]);
                 }
-            });
 
-            // 선택된 화면 보이기
-            const screenMap = {
-                'home': 'homeScreen',
-                'role': 'roleScreen', 
-                'codeInput': 'codeInputScreen',
-                'result': 'resultScreen'
-            };
+                // 네비게이션 활성화 상태 변경
+                const navItems = document.querySelectorAll('.nav-item');
+                navItems.forEach(item => {
+                    item.classList.remove('active');
+                });
 
-            const targetScreen = document.getElementById(screenMap[screenName]);
-            if (targetScreen) {
-                targetScreen.classList.add('active');
-            }
-
-            // 네비게이션 활성화 상태 변경
-            document.querySelectorAll('.nav-item').forEach(item => {
-                item.classList.remove('active');
-            });
-
-            // 클릭된 버튼 찾아서 활성화
-            const navButtons = document.querySelectorAll('.nav-item');
-            navButtons.forEach((button, index) => {
+                // 클릭된 버튼 찾아서 활성화
                 const buttonScreens = ['home', 'role', 'codeInput', 'result'];
-                if (buttonScreens[index] === screenName) {
-                    button.classList.add('active');
+                navItems.forEach((button, index) => {
+                    if (buttonScreens[index] === screenName) {
+                        button.classList.add('active');
+                        console.log('네비게이션 활성화:', index);
+                    }
+                });
+                
+                // 결과 화면 선택 시 데이터 새로고침
+                if (screenName === 'result' && typeof setupResultScreen === 'function') {
+                    setupResultScreen();
                 }
-            });
-            
-            // 결과 화면 선택 시 데이터 새로고침
-            if (screenName === 'result') {
-                setupResultScreen();
+                
+            } catch (error) {
+                console.error('showScreen 오류:', error);
             }
         }
 
