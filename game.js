@@ -477,6 +477,20 @@ async function processSecretCode(targetPlayer, targetPlayerId) {
         const myPlayerDoc = await db.collection('activePlayers').doc(myPlayerId).get();
         const myPlayerData = myPlayerDoc.data();
 
+async function processSecretCode(targetPlayer, targetPlayerId) {
+    let result = {
+        targetCode: targetPlayer.secretCode,
+        targetName: targetPlayer.name,
+        targetPlayerId: targetPlayerId,
+        timestamp: new Date().toLocaleString('ko-KR')
+    };
+
+    const myPlayerId = gameState.player.loginCode;
+    
+    try {
+        const myPlayerDoc = await db.collection('activePlayers').doc(myPlayerId).get();
+        const myPlayerData = myPlayerDoc.data();
+
         switch (gameState.role) {
             case 'detective':
                 if (targetPlayer.role === 'merchant') {
@@ -549,7 +563,19 @@ async function processSecretCode(targetPlayer, targetPlayerId) {
                     money: currentMoney + result.amount
                 });
                 break;
-        }result.type = 'clue';
+        }
+
+        await db.collection('activePlayers').doc(myPlayerId).update({
+            results: firebase.firestore.FieldValue.arrayUnion(result)
+        });
+
+        gameState.results.push(result);
+        return result;
+    } catch (error) {
+        console.error('시크릿 코드 처리 오류:', error);
+        throw error;
+    }
+}result.type = 'clue';
                     result.title = '동료 탐정 정보';
                     result.content = '동료 탐정과 정보를 공유했습니다.';
                 }
