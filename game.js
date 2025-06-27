@@ -844,8 +844,8 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('quickLoginButton').addEventListener('click', quickLogin);
     document.getElementById('registerButton').addEventListener('click', register);
     document.getElementById('submitCodeButton').addEventListener('click', submitCode);
-    document.getElementById('showRegisterBtn').addEventListener('click', showRegisterForm);
-    document.getElementById('showLoginBtn').addEventListener('click', showLoginForm);
+    document.getElementById('showRegisterButton').addEventListener('click', showRegisterForm);
+    document.getElementById('showLoginButton').addEventListener('click', showLoginForm);
     
     // 네비게이션 버튼 이벤트 리스너 등록
     document.getElementById('homeNavBtn').addEventListener('click', () => showScreen('home'));
