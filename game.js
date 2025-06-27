@@ -477,20 +477,6 @@ async function processSecretCode(targetPlayer, targetPlayerId) {
         const myPlayerDoc = await db.collection('activePlayers').doc(myPlayerId).get();
         const myPlayerData = myPlayerDoc.data();
 
-async function processSecretCode(targetPlayer, targetPlayerId) {
-    let result = {
-        targetCode: targetPlayer.secretCode,
-        targetName: targetPlayer.name,
-        targetPlayerId: targetPlayerId,
-        timestamp: new Date().toLocaleString('ko-KR')
-    };
-
-    const myPlayerId = gameState.player.loginCode;
-    
-    try {
-        const myPlayerDoc = await db.collection('activePlayers').doc(myPlayerId).get();
-        const myPlayerData = myPlayerDoc.data();
-
         switch (gameState.role) {
             case 'detective':
                 if (targetPlayer.role === 'merchant') {
@@ -576,105 +562,6 @@ async function processSecretCode(targetPlayer, targetPlayerId) {
         console.error('시크릿 코드 처리 오류:', error);
         throw error;
     }
-}result.type = 'clue';
-                    result.title = '동료 탐정 정보';
-                    result.content = '동료 탐정과 정보를 공유했습니다.';
- 
-
-            case 'criminal':
-                const currentKillCount = myPlayerData.killCount || 0;
-                
-                if (currentKillCount >= 3) {
-                    throw new Error('이미 최대 제거 횟수(3회)에 도달했습니다.');
-                }
-
-                result.type = 'kill';
-                result.title = '제거 대상 확보';
-                // 범인은 상대방의 역할을 모르게 함
-                result.content = `${targetPlayer.name}을(를) 제거할 수 있습니다.`;
-                result.canKill = true;
-                result.executed = false;
-                // 실제 역할은 내부적으로만 저장 (UI에 표시 안 함)
-                result.targetRole = targetPlayer.role;
-                
-                await db.collection('activePlayers').doc(myPlayerId).update({
-                    killCount: currentKillCount + 1
-                });
-                
-                break;
-
-            case 'merchant':
-                result.type = 'money';
-                if (targetPlayer.role === 'merchant') {
-                    result.amount = Math.floor(Math.random() * 100) + 1;
-                } else {
-                    result.amount = Math.floor(Math.random() * 100) + 50;
-                }
-                result.title = '거래 성공';
-                result.content = `${result.amount}원을 획득했습니다.`;
-                
-                const currentMoney = myPlayerData.money || 0;
-                await db.collection('activePlayers').doc(myPlayerId).update({
-                    money: currentMoney + result.amount
-                });
-                break;
-        }
-
-        await db.collection('activePlayers').doc(myPlayerId).update({
-            results: firebase.firestore.FieldValue.arrayUnion(result)
-        });
-
-        gameState.results.push(result);
-        return result;
-    } catch (error) {
-        console.error('시크릿 코드 처리 오류:', error);
-        throw error;
-    }
-}PlayerData.killCount || 0;
-                
-                if (currentKillCount >= 3) {
-                    throw new Error('이미 최대 제거 횟수(3회)에 도달했습니다.');
-                }
-
-                result.type = 'kill';
-                result.title = '제거 대상 확보';
-                result.content = `${targetPlayer.name} (${targetPlayer.role === 'detective' ? '탐정' : targetPlayer.role === 'merchant' ? '상인' : '대상'})을 제거할 수 있습니다.`;
-                result.canKill = true;
-                result.executed = false;
-                
-                await db.collection('players').doc(myPlayerId).update({
-                    killCount: currentKillCount + 1
-                });
-                
-                break;
-
-            case 'merchant':
-                result.type = 'money';
-                if (targetPlayer.role === 'merchant') {
-                    result.amount = Math.floor(Math.random() * 100) + 1;
-                } else {
-                    result.amount = Math.floor(Math.random() * 100) + 50;
-                }
-                result.title = '거래 성공';
-                result.content = `${result.amount}원을 획득했습니다.`;
-                
-                const currentMoney = myPlayerData.money || 0;
-                await db.collection('players').doc(myPlayerId).update({
-                    money: currentMoney + result.amount
-                });
-                break;
-        }
-
-        await db.collection('players').doc(myPlayerId).update({
-            results: firebase.firestore.FieldValue.arrayUnion(result)
-        });
-
-        gameState.results.push(result);
-        return result;
-    } catch (error) {
-        console.error('시크릿 코드 처리 오류:', error);
-        throw error;
-    }
 }
 
 // UI 관련 함수들
@@ -746,7 +633,7 @@ function setupRoleCard() {
 async function setupResultScreen() {
     if (gameState.isLoggedIn) {
         try {
-            const playerDoc = await db.collection('players').doc(gameState.player.loginCode).get();
+            const playerDoc = await db.collection('activePlayers').doc(gameState.player.loginCode).get();
             if (playerDoc.exists) {
                 const playerData = playerDoc.data();
                 gameState.results = playerData.results || [];
@@ -776,7 +663,7 @@ async function setupResultScreen() {
 }
 
 function setupRealtimeListener() {
-    db.collection('players').doc(gameState.player.loginCode)
+    db.collection('activePlayers').doc(gameState.player.loginCode)
         .onSnapshot((doc) => {
             if (doc.exists) {
                 const data = doc.data();
@@ -921,13 +808,13 @@ async function executeKill(killIndex) {
         kill.content = `${kill.targetName} 제거 실행됨 (3분 후 게임 종료)`;
 
         const myPlayerId = gameState.player.loginCode;
-        await db.collection('players').doc(myPlayerId).update({
+        await db.collection('activePlayers').doc(myPlayerId).update({
             results: gameState.results
         });
 
         setTimeout(async () => {
             try {
-                await db.collection('players').doc(kill.targetPlayerId).update({
+                await db.collection('activePlayers').doc(kill.targetPlayerId).update({
                     isAlive: false,
                     deathTime: firebase.firestore.FieldValue.serverTimestamp(),
                     killedBy: myPlayerId
@@ -954,8 +841,11 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('페이지 로드 완료');
     
     // 버튼 이벤트 리스너 등록
-    document.getElementById('loginButton').addEventListener('click', login);
+    document.getElementById('quickLoginButton').addEventListener('click', quickLogin);
+    document.getElementById('registerButton').addEventListener('click', register);
     document.getElementById('submitCodeButton').addEventListener('click', submitCode);
+    document.getElementById('showRegisterBtn').addEventListener('click', showRegisterForm);
+    document.getElementById('showLoginBtn').addEventListener('click', showLoginForm);
     
     // 네비게이션 버튼 이벤트 리스너 등록
     document.getElementById('homeNavBtn').addEventListener('click', () => showScreen('home'));
@@ -965,7 +855,11 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('logoutNavBtn').addEventListener('click', logout);
     
     // 입력 필드 이벤트
-    document.getElementById('loginCode').addEventListener('input', function(e) {
+    document.getElementById('quickLoginCode').addEventListener('input', function(e) {
+        e.target.value = e.target.value.toUpperCase();
+    });
+    
+    document.getElementById('registerCode').addEventListener('input', function(e) {
         e.target.value = e.target.value.toUpperCase();
     });
     
@@ -974,9 +868,15 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Enter 키 이벤트
+    document.getElementById('quickLoginCode').addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            quickLogin();
+        }
+    });
+    
     document.getElementById('playerPosition').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
-            login();
+            register();
         }
     });
     
