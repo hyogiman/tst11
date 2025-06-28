@@ -17,6 +17,50 @@ function setupRealtimeListener() {
     // 새 리스너 설정
     gameState.realtimeListener = db.collection('activePlayers').doc(gameState.player.loginCode)
         .onSnapshot((doc) => {
+            // 로그아웃 상태이면 리스너 실행 안 함
+            if (!gameState.isLoggedIn) {
+                return;
+            }
+
+            if (doc.exists) {
+                const data = doc.data();
+                
+                // receivedInteractions 데이터 동기화
+                if (data.receivedInteractions) {
+                    gameState.receivedInteractions = data.receivedInteractions;
+                }
+                
+                // 사망한 경우에만 강제 로그아웃 (isActive 상태는 admin에서 확인용으로 유지)
+                if (!data.isAlive) {
+                    if (gameState.isAlive && gameState.isLoggedIn) {
+                        console.log('범인에 의해 게임에서 제거됩니다.');
+                        
+                        // 실시간 리스너 즉시 해제
+                        if (gameState.realtimeListener) {
+                            try {
+                                gameState.realtimeListener();
+                            } catch (error) {
+                                console.error('강제 제거 시 리스너 해제 오류:', error);
+                            }
+                            gameState.realtimeListener = null;function setupRealtimeListener() {
+    // 기존 리스너가 있다면 해제
+    if (gameState.realtimeListener) {
+        try {
+            gameState.realtimeListener();
+        } catch (error) {
+            console.error('기존 리스너 해제 오류:', error);
+        }
+        gameState.realtimeListener = null;
+    }
+
+    // 로그인 상태가 아니면 리스너 설정 안 함
+    if (!gameState.isLoggedIn || !gameState.player) {
+        return;
+    }
+
+    // 새 리스너 설정
+    gameState.realtimeListener = db.collection('activePlayers').doc(gameState.player.loginCode)
+        .onSnapshot((doc) => {
             // 로그아웃 상태이거나 강제 제거 플래그가 있으면 리스너 실행 안 함
             if (!gameState.isLoggedIn) {
                 return;
@@ -110,25 +154,10 @@ function setupRealtimeListener() {
 function showScreen(screenName) {
     console.log('화면 전환 시도:', screenName, '로그인 상태:', gameState.isLoggedIn);
     
-    // 로그인이 안 된 상태에서는 무조건 로그인 화면으로
+    // 로그인이 안 된 상태에서는 무조건 아무것도 하지 않음
     if (!gameState.isLoggedIn) {
-        console.log('로그인이 필요합니다. 로그인 화면으로 이동');
-        
-        // 모든 화면 숨기기
-        document.querySelectorAll('.screen').forEach(screen => {
-            screen.classList.remove('active');
-        });
-        
-        // 로그인 화면만 표시
-        document.getElementById('loginScreen').classList.add('active');
-        
-        // 하단 네비게이션 숨기기
-        const bottomNav = document.getElementById('bottomNav');
-        if (bottomNav) {
-            bottomNav.style.display = 'none';
-        }
-        
-        return;
+        console.log('로그인이 필요합니다. 화면 전환 차단됨');
+        return false; // 아무것도 하지 않음
     }
     
     // 로그인된 상태에서만 정상적인 화면 전환
@@ -167,6 +196,8 @@ function showScreen(screenName) {
             console.error('결과 화면 설정 오류:', error);
         });
     }
+    
+    return true;
 }// 게임 상태
 let gameState = {
     isLoggedIn: false,
@@ -587,7 +618,13 @@ async function submitCode() {
     // 1. 내가 이미 입력한 코드인지 확인 (재입력 방지)
     if (gameState.interactionCooldowns[targetCode] && now < gameState.interactionCooldowns[targetCode]) {
         const remainingTime = Math.ceil((gameState.interactionCooldowns[targetCode] - now) / 1000);
-        alert(`이 플레이어와는 ${remainingTime}초 후에 다시 상호작용할 수 있습니다.`);
+        
+        // 남은 시간이 100000초 이상이면 영구차단 메시지
+        if (remainingTime > 100000) {
+            alert('한번 입력한 코드는 다시 입력할 수 없습니다.');
+        } else {
+            alert(`이 플레이어와는 ${remainingTime}초 후에 다시 상호작용할 수 있습니다.`);
+        }
         return;
     }
 
@@ -1100,14 +1137,14 @@ async function executeKill(killIndex) {
             killCount: currentKillCount + 1
         });
 
-        // 지정된 시간 후 대상 플레이어 제거
+        // 지정된 시간 후 대상 플레이어 제거 (isActive는 그대로 두고 isAlive만 false)
         setTimeout(async () => {
             try {
                 await db.collection('activePlayers').doc(kill.targetPlayerId).update({
                     isAlive: false,
-                    isActive: false, // 강제 로그아웃
                     deathTime: firebase.firestore.FieldValue.serverTimestamp(),
                     killedBy: myPlayerId
+                    // isActive는 그대로 둠 (admin에서 상태 확인을 위해)
                 });
                 console.log(`플레이어 ${kill.targetPlayerId} 제거 완료`);
             } catch (error) {
