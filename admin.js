@@ -244,9 +244,10 @@ async function createLoginCode() {
     const loginCode = document.getElementById('newLoginCode').value.toUpperCase();
     const role = document.getElementById('newCodeRole').value;
     const secretCode = document.getElementById('newSecretCode').value.toUpperCase();
+    const secretTitle = document.getElementById('newSecretTitle').value;
     const secretContent = document.getElementById('newSecretContent').value;
 
-    if (!loginCode || !secretCode || !secretContent) {
+    if (!loginCode || !secretCode || !secretTitle || !secretContent) {
         alert('모든 필드를 입력해주세요.');
         return;
     }
@@ -268,6 +269,7 @@ async function createLoginCode() {
         await db.collection('loginCodes').doc(loginCode).set({
             role: role,
             secretCode: secretCode,
+            secretTitle: secretTitle,
             secretContent: secretContent,
             used: false,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -277,6 +279,7 @@ async function createLoginCode() {
         // 입력 필드 초기화
         document.getElementById('newLoginCode').value = '';
         document.getElementById('newSecretCode').value = '';
+        document.getElementById('newSecretTitle').value = '';
         document.getElementById('newSecretContent').value = '';
 
         showAlert('로그인 코드가 생성되었습니다.', 'success');
@@ -316,6 +319,7 @@ async function loadLoginCodesList() {
                         <button class="btn danger" onclick="deleteLoginCode('${doc.id}')" style="width: auto; padding: 5px 10px; font-size: 12px;">삭제</button>
                     </div>
                     <div class="list-item-subtitle">시크릿 코드: ${data.secretCode}</div>
+                    <div class="list-item-subtitle">제목: ${data.secretTitle || '제목 없음'}</div>
                     <div class="list-item-subtitle">상태: ${data.used ? '사용됨' : '미사용'}</div>
                     <div style="margin-top: 8px; font-size: 14px; color: #555;">${data.secretContent}</div>
                 </div>
