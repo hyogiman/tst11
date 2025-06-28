@@ -232,8 +232,9 @@ async function createLoginCode() {
     const secretCode = document.getElementById('newSecretCode').value.toUpperCase();
     const secretTitle = document.getElementById('newSecretTitle').value;
     const secretContent = document.getElementById('newSecretContent').value;
+    const interactionMission = document.getElementById('newInteractionMission').value;
 
-    if (!loginCode || !secretCode || !secretTitle || !secretContent) {
+    if (!loginCode || !secretCode || !secretTitle || !secretContent || !interactionMission) {
         alert('모든 필드를 입력해주세요.');
         return;
     }
@@ -255,6 +256,7 @@ async function createLoginCode() {
             secretCode: secretCode,
             secretTitle: secretTitle,
             secretContent: secretContent,
+            interactionMission: interactionMission,
             used: false,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             createdBy: 'admin'
@@ -264,6 +266,7 @@ async function createLoginCode() {
         document.getElementById('newSecretCode').value = '';
         document.getElementById('newSecretTitle').value = '';
         document.getElementById('newSecretContent').value = '';
+        document.getElementById('newInteractionMission').value = '';
 
         showAlert('로그인 코드가 생성되었습니다.', 'success');
         loadLoginCodesList();
@@ -301,6 +304,7 @@ async function loadLoginCodesList() {
             html += '</div>';
             html += '<div class="list-item-subtitle">시크릿 코드: ' + data.secretCode + '</div>';
             html += '<div class="list-item-subtitle">제목: ' + (data.secretTitle || '제목 없음') + '</div>';
+            html += '<div class="list-item-subtitle">상호작용 미션: ' + (data.interactionMission || '미션 없음') + '</div>';
             html += '<div class="list-item-subtitle">상태: ' + (data.used ? '사용됨' : '미사용') + '</div>';
             html += '<div style="margin-top: 8px; font-size: 14px; color: #555;">' + data.secretContent + '</div>';
             html += '</div>';
