@@ -1,4 +1,64 @@
-// UI 관련 함수들
+function setupRealtimeListener() {
+    db.collection('activePlayers').doc(gameState.player.loginCode)
+        .onSnapshot((doc) => {
+            if (doc.exists) {
+                const data = doc.data();
+                
+                // 사망하거나 비활성화된 경우 강제 로그아웃 (단, 정상 로그아웃이 아닌 경우만)
+                if (!data.isAlive || !data.isActive) {
+                    if (gameState.isAlive && gameState.isLoggedIn) {
+                        gameState.isAlive = false;
+                        gameState.isLoggedIn = false;
+                        
+                        // 강제 로그아웃 처리 (알림 없이)
+                        console.log('게임에서 제외되어 강제 로그아웃됩니다.');
+                        
+                        // 게임 상태 완전 초기화
+                        gameState = {
+                            isLoggedIn: false,
+                            player: null,
+                            role: null,
+                            secretCode: null,
+                            results: [],
+                            isAlive: true,
+                            deathTimer: null,
+                            interactionCooldowns: {},
+                            mutualInteractions: {}
+                        };
+
+                        // 로그인 화면으로 이동
+                        document.querySelectorAll('.screen').forEach(screen => {
+                            screen.classList.remove('active');
+                        });
+                        document.getElementById('loginScreen').classList.add('active');
+                        
+                        // 하단 네비게이션 숨기기
+                        document.getElementById('bottomNav').style.display = 'none';
+                        
+                        // 입력 필드 초기화
+                        document.getElementById('quickLoginCode').value = '';
+                        document.getElementById('registerCode').value = '';
+                        document.getElementById('playerName').value = '';
+                        document.getElementById('playerPosition').value = '';
+                    }
+                    return;
+                }
+                
+                if (data.results && data.results.length !== gameState.results.length) {
+                    gameState.results = data.results;
+                    setupResultScreen().catch(error => {
+                        console.error('실시간 결과 업데이트 오류:', error);
+                    });
+                }
+            } else {
+                // 문서가 삭제된 경우에도 강제 로그아웃
+                if (gameState.isLoggedIn) {
+                    console.log('계정이 삭제되었습니다.');
+                    location.reload(); // 페이지 새로고침
+                }
+            }
+        });
+}// UI 관련 함수들
 function showScreen(screenName) {
     console.log('화면 전환:', screenName);
     
@@ -58,7 +118,8 @@ let gameState = {
     results: [],
     isAlive: true,
     deathTimer: null,
-    interactionCooldowns: {} // 상호작용 쿨다운 관리
+    interactionCooldowns: {}, // 상호작용 쿨다운 관리
+    mutualInteractions: {} // 양방향 상호작용 관리
 };
 
 // 기본 시크릿 코드
@@ -154,10 +215,16 @@ async function quickLogin() {
         
         const userData = userDoc.data();
         
-        // 현재 접속 중인지 확인
+        // 사망 상태 확인 (제거된 플레이어 로그인 방지)
         const activePlayerDoc = await db.collection('activePlayers').doc(loginCode).get();
-        if (activePlayerDoc.exists && activePlayerDoc.data().isActive) {
-            throw new Error('이미 접속 중인 코드입니다.');
+        if (activePlayerDoc.exists) {
+            const activeData = activePlayerDoc.data();
+            if (!activeData.isAlive) {
+                throw new Error('게임에서 제거되어 접속할 수 없습니다. 관리자가 부활시킬 때까지 기다려주세요.');
+            }
+            if (activeData.isActive) {
+                throw new Error('이미 접속 중인 코드입니다.');
+            }
         }
 
         // 활성 플레이어로 등록
@@ -426,11 +493,22 @@ async function submitCode() {
         return;
     }
 
-    // 쿨다운 체크
     const now = Date.now();
+    
+    // 1. 이미 입력한 코드인지 확인
     if (gameState.interactionCooldowns[targetCode] && now < gameState.interactionCooldowns[targetCode]) {
         const remainingTime = Math.ceil((gameState.interactionCooldowns[targetCode] - now) / 1000);
         alert(`이 플레이어와는 ${remainingTime}초 후에 다시 상호작용할 수 있습니다.`);
+        return;
+    }
+
+    // 2. 양방향 상호작용 확인 (상대가 나를 입력한 경우)
+    const mySecretCode = gameState.secretCode;
+    const mutualKey = `${targetCode}_${mySecretCode}`;
+    
+    if (gameState.mutualInteractions[mutualKey] && now < gameState.mutualInteractions[mutualKey]) {
+        const remainingTime = Math.ceil((gameState.mutualInteractions[mutualKey] - now) / 1000);
+        alert(`이 플레이어가 최근에 당신과 상호작용했습니다. ${remainingTime}초 후에 다시 시도하세요.`);
         return;
     }
 
@@ -468,8 +546,12 @@ async function submitCode() {
 
         const result = await processSecretCode(targetPlayer, targetPlayerId);
         
-        // 상호작용 쿨다운 설정 (3분 = 180초)
-        gameState.interactionCooldowns[targetCode] = now + 180000;
+        // 3. 상호작용 쿨다운 설정 (내가 상대 코드 입력)
+        gameState.interactionCooldowns[targetCode] = now + 180000; // 3분
+        
+        // 4. 양방향 상호작용 쿨다운 설정 (상대가 내 코드 입력하는 것을 막음)
+        const reverseMutualKey = `${mySecretCode}_${targetCode}`;
+        gameState.mutualInteractions[reverseMutualKey] = now + 180000; // 3분
         
         setTimeout(() => {
             document.getElementById('codeLoading').style.display = 'none';
@@ -873,7 +955,22 @@ async function executeKill(killIndex) {
         return;
     }
 
-    if (!confirm(`정말로 ${kill.targetName}을(를) 제거하시겠습니까? 즉시 대상이 게임에서 완전히 제외됩니다.`)) {
+    // 관리자 설정에서 제거 대기 시간 가져오기
+    let killTimer = 180; // 기본값 3분
+    try {
+        const settingsDoc = await db.collection('gameSettings').doc('config').get();
+        if (settingsDoc.exists) {
+            killTimer = settingsDoc.data().killTimer || 180;
+        }
+    } catch (error) {
+        console.error('설정 가져오기 오류:', error);
+    }
+
+    const killTimeMinutes = Math.floor(killTimer / 60);
+    const killTimeSeconds = killTimer % 60;
+    const timeText = killTimeSeconds === 0 ? `${killTimeMinutes}분` : `${killTimeMinutes}분 ${killTimeSeconds}초`;
+
+    if (!confirm(`정말로 ${kill.targetName}을(를) 제거하시겠습니까? ${timeText} 후 대상이 게임에서 완전히 제외됩니다.`)) {
         return;
     }
 
@@ -891,7 +988,7 @@ async function executeKill(killIndex) {
         }
 
         kill.executed = true;
-        kill.content = `${kill.targetName} 제거 완료`;
+        kill.content = `${kill.targetName} 제거 예정 (${timeText} 후 게임 종료)`;
 
         // killCount 증가 및 결과 업데이트
         await db.collection('activePlayers').doc(myPlayerId).update({
@@ -899,15 +996,22 @@ async function executeKill(killIndex) {
             killCount: currentKillCount + 1
         });
 
-        // 즉시 대상 플레이어 제거 및 강제 로그아웃
-        await db.collection('activePlayers').doc(kill.targetPlayerId).update({
-            isAlive: false,
-            isActive: false, // 강제 로그아웃
-            deathTime: firebase.firestore.FieldValue.serverTimestamp(),
-            killedBy: myPlayerId
-        });
+        // 지정된 시간 후 대상 플레이어 제거
+        setTimeout(async () => {
+            try {
+                await db.collection('activePlayers').doc(kill.targetPlayerId).update({
+                    isAlive: false,
+                    isActive: false, // 강제 로그아웃
+                    deathTime: firebase.firestore.FieldValue.serverTimestamp(),
+                    killedBy: myPlayerId
+                });
+                console.log(`플레이어 ${kill.targetPlayerId} 제거 완료`);
+            } catch (error) {
+                console.error('플레이어 제거 오류:', error);
+            }
+        }, killTimer * 1000);
 
-        alert('제거 명령이 실행되었습니다. 대상이 즉시 게임에서 제외됩니다.');
+        alert(`제거 명령이 실행되었습니다. ${timeText} 후 대상이 게임에서 제외됩니다.`);
         setupResultScreen().catch(error => {
             console.error('결과 화면 새로고침 오류:', error);
         });
