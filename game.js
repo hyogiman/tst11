@@ -230,21 +230,22 @@ async function register() {
         
         const codeData = codeDoc.data();
         
+        if (codeData.used) {
+            throw new Error('이미 사용된 로그인 코드입니다.');
+        }
+        
         // 이미 등록된 사용자인지 확인
         const existingUserDoc = await db.collection('registeredUsers').doc(loginCode).get();
         if (existingUserDoc.exists) {
             throw new Error('이미 등록된 코드입니다.');
         }
 
-        // 영구 시크릿 코드 생성
-        const secretCode = await generateSecretCodeFromFirebase(codeData.role);
-
         // 등록된 사용자로 저장 (영구 저장)
         const userData = {
             name: playerName,
             position: playerPosition,
             role: codeData.role,
-            secretCode: secretCode,
+            secretCode: codeData.secretCode,
             registeredAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
@@ -275,7 +276,7 @@ async function register() {
             loginCode: loginCode
         };
         gameState.role = codeData.role;
-        gameState.secretCode = secretCode;
+        gameState.secretCode = codeData.secretCode;
         gameState.isLoggedIn = true;
 
         setTimeout(() => {
@@ -481,34 +482,22 @@ async function processSecretCode(targetPlayer, targetPlayerId) {
             case 'detective':
                 if (targetPlayer.role === 'merchant') {
                     // 상인의 시크릿 코드별 맞춤 정보 가져오기
-                    const merchantInfo = await getSecretCodeInfo(
-                        targetPlayer.secretCode,
-                        '상인의 증언',
-                        generateMerchantTestimony()
-                    );
+                    const secretContent = await getSecretContentFromLoginCode(targetPlayer.secretCode);
                     result.type = 'clue';
-                    result.title = merchantInfo.title;
-                    result.content = merchantInfo.content;
+                    result.title = '상인의 증언';
+                    result.content = secretContent || generateMerchantTestimony();
                 } else if (targetPlayer.role === 'criminal') {
                     // 범인의 시크릿 코드별 맞춤 정보 가져오기
-                    const criminalInfo = await getSecretCodeInfo(
-                        targetPlayer.secretCode,
-                        '결정적 증거',
-                        generateCriminalEvidence()
-                    );
+                    const secretContent = await getSecretContentFromLoginCode(targetPlayer.secretCode);
                     result.type = 'evidence';
-                    result.title = criminalInfo.title;
-                    result.content = criminalInfo.content;
+                    result.title = '결정적 증거';
+                    result.content = secretContent || generateCriminalEvidence();
                 } else {
                     // 동료 탐정의 시크릿 코드별 맞춤 정보 가져오기
-                    const detectiveInfo = await getSecretCodeInfo(
-                        targetPlayer.secretCode,
-                        '동료 탐정 정보',
-                        '동료 탐정과 정보를 공유했습니다.'
-                    );
+                    const secretContent = await getSecretContentFromLoginCode(targetPlayer.secretCode);
                     result.type = 'clue';
-                    result.title = detectiveInfo.title;
-                    result.content = detectiveInfo.content;
+                    result.title = '동료 탐정 정보';
+                    result.content = secretContent || '동료 탐정과 정보를 공유했습니다.';
                 }
                 break;
 
@@ -561,6 +550,26 @@ async function processSecretCode(targetPlayer, targetPlayerId) {
     } catch (error) {
         console.error('시크릿 코드 처리 오류:', error);
         throw error;
+    }
+}
+
+// 로그인 코드에서 시크릿 콘텐츠 가져오기
+async function getSecretContentFromLoginCode(secretCode) {
+    try {
+        const loginCodesSnapshot = await db.collection('loginCodes')
+            .where('secretCode', '==', secretCode)
+            .limit(1)
+            .get();
+        
+        if (!loginCodesSnapshot.empty) {
+            const loginCodeData = loginCodesSnapshot.docs[0].data();
+            return loginCodeData.secretContent;
+        }
+        
+        return null;
+    } catch (error) {
+        console.error('시크릿 콘텐츠 가져오기 오류:', error);
+        return null;
     }
 }
 
