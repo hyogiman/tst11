@@ -621,10 +621,13 @@ async function submitCode() {
     }
 
     // 2. 상대가 나에게 코드를 입력했는지 확인 (역방향 쿨타임)
-    if (gameState.receivedInteractions[targetCode] && now < gameState.receivedInteractions[targetCode]) {
-        const remainingTime = Math.ceil((gameState.receivedInteractions[targetCode] - now) / 1000);
-        alert(`이 플레이어가 최근에 당신과 상호작용했습니다. ${remainingTime}초 후에 다시 시도하세요.`);
-        return;
+    if (gameState.receivedInteractions[targetCode]) {
+        const interactionData = gameState.receivedInteractions[targetCode];
+        if (interactionData.cooldownUntil && now < interactionData.cooldownUntil) {
+            const remainingTime = Math.ceil((interactionData.cooldownUntil - now) / 1000);
+            alert(`이 플레이어가 최근에 당신과 상호작용했습니다. ${remainingTime}초 후에 다시 시도하세요.`);
+            return;
+        }
     }
 
     document.getElementById('codeLoading').style.display = 'block';
