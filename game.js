@@ -379,17 +379,24 @@ async function submitCode() {
     try {
         // 활성 플레이어에서 시크릿 코드로 검색
         const playersSnapshot = await db.collection('activePlayers')
-            .where('secretCode', '==', targetCode)
             .where('isActive', '==', true)
             .get();
         
-        if (playersSnapshot.empty) {
+        let targetPlayer = null;
+        let targetPlayerId = null;
+        
+        // 모든 활성 플레이어 중에서 해당 시크릿 코드를 가진 플레이어 찾기
+        playersSnapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.secretCode === targetCode) {
+                targetPlayer = data;
+                targetPlayerId = doc.id;
+            }
+        });
+        
+        if (!targetPlayer) {
             throw new Error('유효하지 않은 시크릿 코드입니다.');
         }
-
-        const targetPlayerDoc = playersSnapshot.docs[0];
-        const targetPlayer = targetPlayerDoc.data();
-        const targetPlayerId = targetPlayerDoc.id;
 
         if (targetPlayerId === gameState.player.loginCode) {
             throw new Error('자신의 시크릿 코드는 입력할 수 없습니다.');
@@ -413,6 +420,7 @@ async function submitCode() {
     } catch (error) {
         document.getElementById('codeLoading').style.display = 'none';
         alert(error.message);
+        console.error('시크릿 코드 처리 오류:', error);
     }
 }
 
