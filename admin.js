@@ -438,9 +438,10 @@ async function revivePlayer(playerId) {
         const activePlayerDoc = await db.collection('activePlayers').doc(playerId).get();
         
         if (activePlayerDoc.exists) {
-            // 기존 문서가 있으면 업데이트
+            // 기존 문서가 있으면 부활시키되 미접속 상태로 설정
             await db.collection('activePlayers').doc(playerId).update({
                 isAlive: true,
+                isActive: false, // 미접속 상태로 설정
                 revivedAt: firebase.firestore.FieldValue.serverTimestamp(),
                 revivedBy: 'admin'
             });
@@ -455,7 +456,7 @@ async function revivePlayer(playerId) {
                     role: userData.role,
                     secretCode: userData.secretCode,
                     isAlive: true,
-                    isActive: false, // 부활시키되 접속은 안 한 상태
+                    isActive: false, // 부활시키되 미접속 상태
                     results: [],
                     killCount: 0,
                     money: 0,
@@ -468,7 +469,7 @@ async function revivePlayer(playerId) {
 
         loadPlayersData();
         loadOverviewData();
-        showAlert('플레이어가 부활되었습니다.', 'success');
+        showAlert('플레이어가 부활되었습니다. (미접속 상태)', 'success');
 
     } catch (error) {
         console.error('플레이어 부활 오류:', error);
