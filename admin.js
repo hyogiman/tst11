@@ -31,7 +31,18 @@ function adminLogout() {
         adminState.isLoggedIn = false;
         adminState.currentScreen = 'overview';
         
-        // 모든 화면 숨기기
+        // 플레이어 상세에서 돌아가기
+    document.getElementById('backToPlayersBtn').addEventListener('click', backToPlayers);
+
+    // 설정 저장
+    document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
+
+    // 로그아웃
+    document.getElementById('logoutBtn').addEventListener('click', adminLogout);
+
+    // 실시간 리스너 설정
+    setupRealtimeListeners();
+}); 모든 화면 숨기기
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.remove('active');
         });
@@ -538,18 +549,7 @@ async function showPlayerDetail(playerId) {
 
         document.getElementById('playerDetailContent').innerHTML = html;
         
-        // 플레이어 상세에서 돌아가기
-    document.getElementById('backToPlayersBtn').addEventListener('click', backToPlayers);
-
-    // 설정 저장
-    document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
-
-    // 로그아웃
-    document.getElementById('logoutBtn').addEventListener('click', adminLogout);
-
-    // 실시간 리스너 설정
-    setupRealtimeListeners();
-}); 상세 화면으로 전환
+        // 플레이어 상세 화면으로 전환
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.remove('active');
         });
@@ -794,4 +794,4 @@ document.addEventListener('DOMContentLoaded', function() {
         e.target.value = e.target.value.toUpperCase();
     });
 
-    // 플레이어
+    //
