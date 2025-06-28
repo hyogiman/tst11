@@ -570,11 +570,15 @@ async function logout() {
 
         // 모든 입력 필드 초기화
         document.getElementById('quickLoginCode').value = '';
-        document.getElementById('quickLoginPassword').value = '';
+        if (document.getElementById('quickLoginPassword')) {
+            document.getElementById('quickLoginPassword').value = '';
+        }
         document.getElementById('registerCode').value = '';
         document.getElementById('playerName').value = '';
         document.getElementById('playerPosition').value = '';
-        document.getElementById('reconnectPassword').value = '';
+        if (document.getElementById('reconnectPassword')) {
+            document.getElementById('reconnectPassword').value = '';
+        }
         document.getElementById('targetCode').value = '';
         
         // 폼 상태 초기화 (간편 로그인 폼 표시)
