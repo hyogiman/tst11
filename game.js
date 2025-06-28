@@ -36,28 +36,6 @@ const roleDescriptions = {
 };
 
 // 유틸리티 함수들
-function generateSecretCode(role) {
-    const codes = tempSecretCodes[role];
-    return codes[Math.floor(Math.random() * codes.length)];
-}
-
-async function generateSecretCodeFromFirebase(role) {
-    try {
-        const secretCodesDoc = await db.collection('gameSettings').doc('secretCodes').get();
-        if (!secretCodesDoc.exists) {
-            return generateSecretCode(role);
-        }
-        
-        const secretCodesData = secretCodesDoc.data();
-        const codes = secretCodesData[role] || tempSecretCodes[role];
-        
-        return codes[Math.floor(Math.random() * codes.length)];
-    } catch (error) {
-        console.error('시크릿 코드 생성 오류:', error);
-        return generateSecretCode(role);
-    }
-}
-
 function generateMerchantTestimony() {
     const testimonies = [
         "오늘 아침 사무실 근처에서 수상한 사람을 봤어요.",
@@ -80,38 +58,6 @@ function generateCriminalEvidence() {
         "범인은 회사에 불만이 있는 사람일 가능성이 높습니다."
     ];
     return evidences[Math.floor(Math.random() * evidences.length)];
-}
-
-// 시크릿 코드별 맞춤 정보 가져오기
-async function getSecretCodeInfo(secretCode, defaultTitle, defaultContent) {
-    try {
-        const infoDoc = await db.collection('gameSettings').doc('secretCodesInfo').get();
-        
-        if (infoDoc.exists) {
-            const allInfo = infoDoc.data();
-            const codeInfo = allInfo[secretCode];
-            
-            if (codeInfo && codeInfo.title && codeInfo.content) {
-                return {
-                    title: codeInfo.title,
-                    content: codeInfo.content
-                };
-            }
-        }
-        
-        // 관리자가 설정하지 않은 경우 기본값 사용
-        return {
-            title: defaultTitle,
-            content: defaultContent
-        };
-        
-    } catch (error) {
-        console.error('시크릿 코드 정보 가져오기 오류:', error);
-        return {
-            title: defaultTitle,
-            content: defaultContent
-        };
-    }
 }
 
 // 게임 상태 확인
@@ -225,13 +171,13 @@ async function register() {
         const codeDoc = await db.collection('loginCodes').doc(loginCode).get();
         
         if (!codeDoc.exists) {
-            throw new Error('유효하지 않은 로그인 코드입니다.');
+            throw new Error('유효하지 않은 로그인 코드입니다. 관리자에게 문의하세요.');
         }
         
         const codeData = codeDoc.data();
         
         if (codeData.used) {
-            throw new Error('이미 사용된 로그인 코드입니다.');
+            throw new Error('이미 사용된 로그인 코드입니다. 다른 로그인 코드를 사용하거나 관리자에게 문의하세요.');
         }
         
         // 이미 등록된 사용자인지 확인
@@ -285,7 +231,13 @@ async function register() {
 
     } catch (error) {
         document.getElementById('loginLoading').style.display = 'none';
-        alert(error.message);
+        
+        // 로그인 코드 부족 시 특별 메시지
+        if (error.message.includes('유효하지 않은')) {
+            alert('로그인 코드가 추가로 필요합니다. 관리자에게 문의하세요.');
+        } else {
+            alert(error.message);
+        }
         console.error('등록 오류:', error);
     }
 }
