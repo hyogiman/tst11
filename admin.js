@@ -172,6 +172,172 @@ function updateGameStatusUI(isActive) {
 // 게임 시작
 async function startGame() {
     try {
+        await db.collection('gameSettings').doc('gameStatus').set({
+            isActive: true,
+            startedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            startedBy: 'admin'
+        });
+
+        updateGameStatusUI(true);
+        showAlert('게임이 시작되었습니다.', 'success');
+        
+    } catch (error) {
+        console.error('게임 시작 오류:', error);
+        showAlert('게임 시작 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 게임 중지
+async function stopGame() {
+    if (!confirm('정말 게임을 중지하시겠습니까?')) return;
+
+    try {
+        await db.collection('gameSettings').doc('gameStatus').set({
+            isActive: false,
+            stoppedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            stoppedBy: 'admin'
+        });
+
+        updateGameStatusUI(false);
+        showAlert('게임이 중지되었습니다.', 'warning');
+        
+    } catch (error) {
+        console.error('게임 중지 오류:', error);
+        showAlert('게임 중지 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 게임 초기화
+async function resetGame() {
+    if (!confirm('정말 게임을 초기화하시겠습니까? 모든 플레이어 데이터가 삭제됩니다.')) return;
+
+    try {
+        // 활성 플레이어 모두 삭제
+        const activeSnapshot = await db.collection('activePlayers').get();
+        const batch = db.batch();
+        
+        activeSnapshot.forEach(doc => {
+            batch.delete(doc.ref);
+        });
+
+        await batch.commit();
+
+        // 게임 상태 중지
+        await db.collection('gameSettings').doc('gameStatus').set({
+            isActive: false,
+            resetAt: firebase.firestore.FieldValue.serverTimestamp(),
+            resetBy: 'admin'
+        });
+
+        updateGameStatusUI(false);
+        loadDashboardData(); // 데이터 새로고침
+        showAlert('게임이 초기화되었습니다.', 'success');
+        
+    } catch (error) {
+        console.error('게임 초기화 오류:', error);
+        showAlert('게임 초기화 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 로그인 코드 생성
+async function createLoginCode() {
+    const loginCode = document.getElementById('newLoginCode').value.toUpperCase();
+    const role = document.getElementById('newCodeRole').value;
+    const secretCode = document.getElementById('newSecretCode').value.toUpperCase();
+    const secretTitle = document.getElementById('newSecretTitle').value;
+    const secretContent = document.getElementById('newSecretContent').value;
+
+    if (!loginCode || !secretCode || !secretTitle || !secretContent) {
+        alert('모든 필드를 입력해주세요.');
+        return;
+    }
+
+    if (loginCode.length !== 4 || secretCode.length !== 4) {
+        alert('로그인 코드와 시크릿 코드는 4자리여야 합니다.');
+        return;
+    }
+
+    try {
+        // 중복 확인
+        const existingCodeDoc = await db.collection('loginCodes').doc(loginCode).get();
+        if (existingCodeDoc.exists) {
+            alert('이미 존재하는 로그인 코드입니다.');
+            return;
+        }
+
+        // 로그인 코드 생성
+        await db.collection('loginCodes').doc(loginCode).set({
+            role: role,
+            secretCode: secretCode,
+            secretTitle: secretTitle,
+            secretContent: secretContent,
+            used: false,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            createdBy: 'admin'
+        });
+
+        // 입력 필드 초기화
+        document.getElementById('newLoginCode').value = '';
+        document.getElementById('newSecretCode').value = '';
+        document.getElementById('newSecretTitle').value = '';
+        document.getElementById('newSecretContent').value = '';
+
+        showAlert('로그인 코드가 생성되었습니다.', 'success');
+        loadLoginCodesList();
+        loadOverviewData();
+
+    } catch (error) {
+        console.error('로그인 코드 생성 오류:', error);
+        showAlert('로그인 코드 생성 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 로그인 코드 목록 로드
+async function loadLoginCodesList() {
+    try {
+        const loginCodesSnapshot = await db.collection('loginCodes').orderBy('createdAt', 'desc').get();
+        const container = document.getElementById('loginCodesList');
+        
+        if (loginCodesSnapshot.empty) {
+            container.innerHTML = '<p style="text-align: center; color: #666;">생성된 로그인 코드가 없습니다.</p>';
+            return;
+        }
+
+        let html = '';
+        loginCodesSnapshot.forEach(doc => {
+            const data = doc.data();
+            const roleNames = {
+                'detective': '탐정',
+                'criminal': '범인',
+                'merchant': '상인'
+            };
+
+            html += `
+                <div class="list-item">
+                    <div class="list-item-header">
+                        <div class="list-item-title">${doc.id} - ${roleNames[data.role]}</div>
+                        <button class="btn danger" onclick="deleteLoginCode('${doc.id}')" style="width: auto; padding: 5px 10px; font-size: 12px;">삭제</button>
+                    </div>
+                    <div class="list-item-subtitle">시크릿 코드: ${data.secretCode}</div>
+                    <div class="list-item-subtitle">제목: ${data.secretTitle || '제목 없음'}</div>
+                    <div class="list-item-subtitle">상태: ${data.used ? '사용됨' : '미사용'}</div>
+                    <div style="margin-top: 8px; font-size: 14px; color: #555;">${data.secretContent}</div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+
+    } catch (error) {
+        console.error('로그인 코드 목록 로드 오류:', error);
+    }
+}
+
+// 로그인 코드 삭제
+async function deleteLoginCode(loginCode) {
+    if (!confirm('정말 이 로그인 코드를 삭제하시겠습니까?')) return;
+
+    try {
         await db.collection('loginCodes').doc(loginCode).delete();
         showAlert('로그인 코드가 삭제되었습니다.', 'success');
         loadLoginCodesList();
@@ -372,7 +538,18 @@ async function showPlayerDetail(playerId) {
 
         document.getElementById('playerDetailContent').innerHTML = html;
         
-        // 플레이어 상세 화면으로 전환
+        // 플레이어 상세에서 돌아가기
+    document.getElementById('backToPlayersBtn').addEventListener('click', backToPlayers);
+
+    // 설정 저장
+    document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
+
+    // 로그아웃
+    document.getElementById('logoutBtn').addEventListener('click', adminLogout);
+
+    // 실시간 리스너 설정
+    setupRealtimeListeners();
+}); 상세 화면으로 전환
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.remove('active');
         });
@@ -617,181 +794,4 @@ document.addEventListener('DOMContentLoaded', function() {
         e.target.value = e.target.value.toUpperCase();
     });
 
-    // 플레이어 상세에서 돌아가기
-    document.getElementById('backToPlayersBtn').addEventListener('click', backToPlayers);
-
-    // 설정 저장
-    document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
-
-    // 로그아웃
-    document.getElementById('logoutBtn').addEventListener('click', adminLogout);
-
-    // 실시간 리스너 설정
-    setupRealtimeListeners();
-}); db.collection('gameSettings').doc('gameStatus').set({
-            isActive: true,
-            startedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            startedBy: 'admin'
-        });
-
-        updateGameStatusUI(true);
-        showAlert('게임이 시작되었습니다.', 'success');
-        
-    } catch (error) {
-        console.error('게임 시작 오류:', error);
-        showAlert('게임 시작 중 오류가 발생했습니다.', 'error');
-    }
-}
-
-// 게임 중지
-async function stopGame() {
-    if (!confirm('정말 게임을 중지하시겠습니까?')) return;
-
-    try {
-        await db.collection('gameSettings').doc('gameStatus').set({
-            isActive: false,
-            stoppedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            stoppedBy: 'admin'
-        });
-
-        updateGameStatusUI(false);
-        showAlert('게임이 중지되었습니다.', 'warning');
-        
-    } catch (error) {
-        console.error('게임 중지 오류:', error);
-        showAlert('게임 중지 중 오류가 발생했습니다.', 'error');
-    }
-}
-
-// 게임 초기화
-async function resetGame() {
-    if (!confirm('정말 게임을 초기화하시겠습니까? 모든 플레이어 데이터가 삭제됩니다.')) return;
-
-    try {
-        // 활성 플레이어 모두 삭제
-        const activeSnapshot = await db.collection('activePlayers').get();
-        const batch = db.batch();
-        
-        activeSnapshot.forEach(doc => {
-            batch.delete(doc.ref);
-        });
-
-        await batch.commit();
-
-        // 게임 상태 중지
-        await db.collection('gameSettings').doc('gameStatus').set({
-            isActive: false,
-            resetAt: firebase.firestore.FieldValue.serverTimestamp(),
-            resetBy: 'admin'
-        });
-
-        updateGameStatusUI(false);
-        loadDashboardData(); // 데이터 새로고침
-        showAlert('게임이 초기화되었습니다.', 'success');
-        
-    } catch (error) {
-        console.error('게임 초기화 오류:', error);
-        showAlert('게임 초기화 중 오류가 발생했습니다.', 'error');
-    }
-}
-
-// 로그인 코드 생성
-async function createLoginCode() {
-    const loginCode = document.getElementById('newLoginCode').value.toUpperCase();
-    const role = document.getElementById('newCodeRole').value;
-    const secretCode = document.getElementById('newSecretCode').value.toUpperCase();
-    const secretTitle = document.getElementById('newSecretTitle').value;
-    const secretContent = document.getElementById('newSecretContent').value;
-
-    if (!loginCode || !secretCode || !secretTitle || !secretContent) {
-        alert('모든 필드를 입력해주세요.');
-        return;
-    }
-
-    if (loginCode.length !== 4 || secretCode.length !== 4) {
-        alert('로그인 코드와 시크릿 코드는 4자리여야 합니다.');
-        return;
-    }
-
-    try {
-        // 중복 확인
-        const existingCodeDoc = await db.collection('loginCodes').doc(loginCode).get();
-        if (existingCodeDoc.exists) {
-            alert('이미 존재하는 로그인 코드입니다.');
-            return;
-        }
-
-        // 로그인 코드 생성
-        await db.collection('loginCodes').doc(loginCode).set({
-            role: role,
-            secretCode: secretCode,
-            secretTitle: secretTitle,
-            secretContent: secretContent,
-            used: false,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            createdBy: 'admin'
-        });
-
-        // 입력 필드 초기화
-        document.getElementById('newLoginCode').value = '';
-        document.getElementById('newSecretCode').value = '';
-        document.getElementById('newSecretTitle').value = '';
-        document.getElementById('newSecretContent').value = '';
-
-        showAlert('로그인 코드가 생성되었습니다.', 'success');
-        loadLoginCodesList();
-        loadOverviewData();
-
-    } catch (error) {
-        console.error('로그인 코드 생성 오류:', error);
-        showAlert('로그인 코드 생성 중 오류가 발생했습니다.', 'error');
-    }
-}
-
-// 로그인 코드 목록 로드
-async function loadLoginCodesList() {
-    try {
-        const loginCodesSnapshot = await db.collection('loginCodes').orderBy('createdAt', 'desc').get();
-        const container = document.getElementById('loginCodesList');
-        
-        if (loginCodesSnapshot.empty) {
-            container.innerHTML = '<p style="text-align: center; color: #666;">생성된 로그인 코드가 없습니다.</p>';
-            return;
-        }
-
-        let html = '';
-        loginCodesSnapshot.forEach(doc => {
-            const data = doc.data();
-            const roleNames = {
-                'detective': '탐정',
-                'criminal': '범인',
-                'merchant': '상인'
-            };
-
-            html += `
-                <div class="list-item">
-                    <div class="list-item-header">
-                        <div class="list-item-title">${doc.id} - ${roleNames[data.role]}</div>
-                        <button class="btn danger" onclick="deleteLoginCode('${doc.id}')" style="width: auto; padding: 5px 10px; font-size: 12px;">삭제</button>
-                    </div>
-                    <div class="list-item-subtitle">시크릿 코드: ${data.secretCode}</div>
-                    <div class="list-item-subtitle">제목: ${data.secretTitle || '제목 없음'}</div>
-                    <div class="list-item-subtitle">상태: ${data.used ? '사용됨' : '미사용'}</div>
-                    <div style="margin-top: 8px; font-size: 14px; color: #555;">${data.secretContent}</div>
-                </div>
-            `;
-        });
-
-        container.innerHTML = html;
-
-    } catch (error) {
-        console.error('로그인 코드 목록 로드 오류:', error);
-    }
-}
-
-// 로그인 코드 삭제
-async function deleteLoginCode(loginCode) {
-    if (!confirm('정말 이 로그인 코드를 삭제하시겠습니까?')) return;
-
-    try {
-        await
+    // 플레이어
