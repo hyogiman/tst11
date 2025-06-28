@@ -217,6 +217,8 @@ async function quickLogin() {
         
         // 사망 상태 확인 (제거된 플레이어 로그인 방지)
         const activePlayerDoc = await db.collection('activePlayers').doc(loginCode).get();
+        let previousData = {};
+        
         if (activePlayerDoc.exists) {
             const activeData = activePlayerDoc.data();
             if (!activeData.isAlive) {
@@ -225,9 +227,16 @@ async function quickLogin() {
             if (activeData.isActive) {
                 throw new Error('이미 접속 중인 코드입니다.');
             }
+            
+            // 기존 데이터 보존 (결과, 킬카운트, 돈 등)
+            previousData = {
+                results: activeData.results || [],
+                killCount: activeData.killCount || 0,
+                money: activeData.money || 0
+            };
         }
 
-        // 활성 플레이어로 등록
+        // 활성 플레이어로 등록 (기존 데이터 유지)
         await db.collection('activePlayers').doc(loginCode).set({
             name: userData.name,
             position: userData.position,
@@ -235,9 +244,9 @@ async function quickLogin() {
             secretCode: userData.secretCode,
             isAlive: true,
             isActive: true,
-            results: [],
-            killCount: 0,
-            money: 0,
+            results: previousData.results || [], // 기존 결과 유지
+            killCount: previousData.killCount || 0, // 기존 킬카운트 유지
+            money: previousData.money || 0, // 기존 돈 유지
             loginTime: firebase.firestore.FieldValue.serverTimestamp()
         });
 
