@@ -9,7 +9,47 @@ function showScreen(screenName) {
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.remove('active');
         });
-        // 게임 상태
+        document.getElementById('loginScreen').classList.add('active');
+        return;
+    }
+    
+    // 모든 화면 숨기기
+    document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+    });
+
+    const screenMap = {
+        'home': 'homeScreen',
+        'role': 'roleScreen', 
+        'codeInput': 'codeInputScreen',
+        'result': 'resultScreen'
+    };
+
+    const targetScreenId = screenMap[screenName];
+    if (targetScreenId) {
+        document.getElementById(targetScreenId).classList.add('active');
+    }
+
+    // 네비게이션 활성화 상태 변경
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+
+    const navItems = document.querySelectorAll('.nav-item');
+    const buttonScreens = ['home', 'role', 'codeInput', 'result'];
+    navItems.forEach((button, index) => {
+        if (buttonScreens[index] === screenName) {
+            button.classList.add('active');
+        }
+    });
+    
+    // 결과 화면일 때만 데이터 로드
+    if (screenName === 'result' && gameState.isLoggedIn) {
+        setupResultScreen().catch(error => {
+            console.error('결과 화면 설정 오류:', error);
+        });
+    }
+}// 게임 상태
 let gameState = {
     isLoggedIn: false,
     player: null,
@@ -629,7 +669,7 @@ async function setupResultScreen() {
             break;
         case 'criminal':
             resultTitle.textContent = '🔪 제거 기록';
-            displayCriminalResults(resultContent);
+            await displayCriminalResults(resultContent);
             break;
         case 'merchant':
             resultTitle.textContent = '💰 수익 현황';
@@ -644,9 +684,43 @@ function setupRealtimeListener() {
             if (doc.exists) {
                 const data = doc.data();
                 
-                if (!data.isAlive && gameState.isAlive) {
-                    gameState.isAlive = false;
-                    showDeathMessage();
+                // 사망하거나 비활성화된 경우 강제 로그아웃
+                if (!data.isAlive || !data.isActive) {
+                    if (gameState.isAlive || gameState.isLoggedIn) {
+                        gameState.isAlive = false;
+                        gameState.isLoggedIn = false;
+                        
+                        // 강제 로그아웃 처리
+                        alert('게임에서 제외되었습니다. 다시 접속할 수 없습니다.');
+                        
+                        // 게임 상태 완전 초기화
+                        gameState = {
+                            isLoggedIn: false,
+                            player: null,
+                            role: null,
+                            secretCode: null,
+                            results: [],
+                            isAlive: true,
+                            deathTimer: null,
+                            interactionCooldowns: {}
+                        };
+
+                        // 로그인 화면으로 이동
+                        document.querySelectorAll('.screen').forEach(screen => {
+                            screen.classList.remove('active');
+                        });
+                        document.getElementById('loginScreen').classList.add('active');
+                        
+                        // 하단 네비게이션 숨기기
+                        document.getElementById('bottomNav').style.display = 'none';
+                        
+                        // 입력 필드 초기화
+                        document.getElementById('quickLoginCode').value = '';
+                        document.getElementById('registerCode').value = '';
+                        document.getElementById('playerName').value = '';
+                        document.getElementById('playerPosition').value = '';
+                    }
+                    return;
                 }
                 
                 if (data.results && data.results.length !== gameState.results.length) {
@@ -654,6 +728,12 @@ function setupRealtimeListener() {
                     setupResultScreen().catch(error => {
                         console.error('실시간 결과 업데이트 오류:', error);
                     });
+                }
+            } else {
+                // 문서가 삭제된 경우에도 강제 로그아웃
+                if (gameState.isLoggedIn) {
+                    alert('계정이 삭제되었습니다. 다시 접속할 수 없습니다.');
+                    location.reload(); // 페이지 새로고침
                 }
             }
         });
@@ -702,9 +782,21 @@ function displayDetectiveResults(container) {
     container.innerHTML = html;
 }
 
-function displayCriminalResults(container) {
+async function displayCriminalResults(container) {
     const kills = gameState.results.filter(r => r.type === 'kill');
-    const remainingKills = 3 - kills.length;
+    
+    // 실제 killCount를 서버에서 가져오기
+    let actualKillCount = 0;
+    try {
+        const myPlayerDoc = await db.collection('activePlayers').doc(gameState.player.loginCode).get();
+        if (myPlayerDoc.exists) {
+            actualKillCount = myPlayerDoc.data().killCount || 0;
+        }
+    } catch (error) {
+        console.error('killCount 가져오기 오류:', error);
+    }
+    
+    const remainingKills = 3 - actualKillCount;
     
     let html = `
         <div class="status-message">
@@ -721,9 +813,10 @@ function displayCriminalResults(container) {
                 <div class="result-item">
                     <div class="result-item-title">${kill.content}</div>
                     <div class="result-item-subtitle">${kill.timestamp}</div>
-                    ${kill.canKill && !kill.executed ? 
+                    ${kill.canKill && !kill.executed && remainingKills > 0 ? 
                         `<button class="attack-btn" onclick="executeKill(${index})">공격</button>` : 
-                        kill.executed ? '<span style="color: #e74c3c; position: absolute; right: 15px; top: 50%; transform: translateY(-50%);">실행됨</span>' : ''
+                        kill.executed ? '<span style="color: #e74c3c; position: absolute; right: 15px; top: 50%; transform: translateY(-50%);">실행됨</span>' : 
+                        remainingKills <= 0 ? '<span style="color: #666; position: absolute; right: 15px; top: 50%; transform: translateY(-50%);">기회없음</span>' : ''
                     }
                 </div>
             `;
@@ -736,31 +829,36 @@ function displayCriminalResults(container) {
 
 function displayMerchantResults(container) {
     const transactions = gameState.results.filter(r => r.type === 'money');
-    const totalMoney = transactions.reduce((sum, t) => sum + (t.amount || 0), 0);
     
-    let html = `
-        <div class="status-message">
-            총 수익: ${totalMoney}원
-        </div>
-    `;
+    let html = '';
+    let totalMoney = 0;
 
     if (transactions.length === 0) {
         html += '<p style="text-align: center; color: #666;">아직 거래 기록이 없습니다.</p>';
     } else {
         html += '<div class="result-list">';
-        transactions.forEach(transaction => {
+        transactions.forEach((transaction, index) => {
+            totalMoney += transaction.amount || 0;
             html += `
                 <div class="result-item">
-                    <div class="result-item-title">거래 완료</div>
+                    <div class="result-item-title">거래 완료 #${index + 1}</div>
                     <div class="result-item-subtitle">${transaction.timestamp}</div>
-                    <div class="result-item-value">+${transaction.amount}원</div>
+                    <div class="result-item-value">+${transaction.amount}원 (누적: ${totalMoney}원)</div>
                 </div>
             `;
         });
         html += '</div>';
     }
     
-    container.innerHTML = html;
+    // 총 수익을 맨 위에 표시
+    const finalHtml = `
+        <div class="status-message">
+            총 수익: ${totalMoney}원
+        </div>
+        ${html}
+    `;
+    
+    container.innerHTML = finalHtml;
 }
 
 function showClueDetail(title, content) {
