@@ -16,6 +16,11 @@ function setupRealtimeListener() {
             if (doc.exists) {
                 const data = doc.data();
                 
+                // receivedInteractions 데이터 동기화
+                if (data.receivedInteractions) {
+                    gameState.receivedInteractions = data.receivedInteractions;
+                }
+                
                 // 사망하거나 비활성화된 경우 강제 로그아웃 (단, 정상 로그아웃이 아닌 경우만)
                 if (!data.isAlive || !data.isActive) {
                     if (gameState.isAlive && gameState.isLoggedIn) {
@@ -60,20 +65,30 @@ function setupRealtimeListener() {
         });
 }// UI 관련 함수들
 function showScreen(screenName) {
-    console.log('화면 전환:', screenName);
+    console.log('화면 전환 시도:', screenName, '로그인 상태:', gameState.isLoggedIn);
     
-    // 로그인이 안 된 상태에서 다른 화면 접근 방지
+    // 로그인이 안 된 상태에서는 무조건 로그인 화면으로
     if (!gameState.isLoggedIn) {
-        console.log('로그인이 필요합니다.');
-        // 로그인 화면으로 이동
+        console.log('로그인이 필요합니다. 로그인 화면으로 이동');
+        
+        // 모든 화면 숨기기
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.remove('active');
         });
+        
+        // 로그인 화면만 표시
         document.getElementById('loginScreen').classList.add('active');
+        
+        // 하단 네비게이션 숨기기
+        const bottomNav = document.getElementById('bottomNav');
+        if (bottomNav) {
+            bottomNav.style.display = 'none';
+        }
+        
         return;
     }
     
-    // 모든 화면 숨기기
+    // 로그인된 상태에서만 정상적인 화면 전환
     document.querySelectorAll('.screen').forEach(screen => {
         screen.classList.remove('active');
     });
@@ -118,8 +133,8 @@ let gameState = {
     results: [],
     isAlive: true,
     deathTimer: null,
-    interactionCooldowns: {}, // 상호작용 쿨다운 관리
-    mutualInteractions: {}, // 양방향 상호작용 관리
+    interactionCooldowns: {}, // 내가 상대 코드를 입력한 쿨다운
+    receivedInteractions: {}, // 내가 상대에게 코드를 입력당한 기록
     realtimeListener: null // 실시간 리스너 참조
 };
 
@@ -229,11 +244,12 @@ async function quickLogin() {
                 throw new Error('이미 접속 중인 코드입니다.');
             }
             
-            // 기존 데이터 보존 (결과, 킬카운트, 돈 등)
+            // 기존 데이터 보존 (결과, 킬카운트, 돈, 상호작용 기록 등)
             previousData = {
                 results: activeData.results || [],
                 killCount: activeData.killCount || 0,
-                money: activeData.money || 0
+                money: activeData.money || 0,
+                receivedInteractions: activeData.receivedInteractions || {}
             };
         }
 
@@ -245,9 +261,10 @@ async function quickLogin() {
             secretCode: userData.secretCode,
             isAlive: true,
             isActive: true,
-            results: previousData.results || [], // 기존 결과 유지
-            killCount: previousData.killCount || 0, // 기존 킬카운트 유지
-            money: previousData.money || 0, // 기존 돈 유지
+            results: previousData.results || [],
+            killCount: previousData.killCount || 0,
+            money: previousData.money || 0,
+            receivedInteractions: previousData.receivedInteractions || {},
             loginTime: firebase.firestore.FieldValue.serverTimestamp()
         });
 
@@ -260,6 +277,7 @@ async function quickLogin() {
         gameState.role = userData.role;
         gameState.secretCode = userData.secretCode;
         gameState.isLoggedIn = true;
+        gameState.receivedInteractions = previousData.receivedInteractions || {};
 
         setTimeout(() => {
             completeLogin();
@@ -503,34 +521,32 @@ async function submitCode() {
         return;
     }
 
+    if (!gameState.isLoggedIn || !gameState.secretCode) {
+        alert('로그인 상태를 확인해주세요.');
+        return;
+    }
+
     const now = Date.now();
+    const mySecretCode = gameState.secretCode;
     
-    // gameState가 초기화되지 않았다면 초기화
+    // gameState 객체들 초기화 확인
     if (!gameState.interactionCooldowns) {
         gameState.interactionCooldowns = {};
     }
-    if (!gameState.mutualInteractions) {
-        gameState.mutualInteractions = {};
+    if (!gameState.receivedInteractions) {
+        gameState.receivedInteractions = {};
     }
     
-    // 1. 이미 입력한 코드인지 확인
+    // 1. 내가 이미 입력한 코드인지 확인 (재입력 방지)
     if (gameState.interactionCooldowns[targetCode] && now < gameState.interactionCooldowns[targetCode]) {
         const remainingTime = Math.ceil((gameState.interactionCooldowns[targetCode] - now) / 1000);
         alert(`이 플레이어와는 ${remainingTime}초 후에 다시 상호작용할 수 있습니다.`);
         return;
     }
 
-    // 2. 양방향 상호작용 확인 (상대가 나를 입력한 경우)
-    const mySecretCode = gameState.secretCode;
-    if (!mySecretCode) {
-        alert('로그인 상태를 확인해주세요.');
-        return;
-    }
-    
-    const mutualKey = `${targetCode}_${mySecretCode}`;
-    
-    if (gameState.mutualInteractions[mutualKey] && now < gameState.mutualInteractions[mutualKey]) {
-        const remainingTime = Math.ceil((gameState.mutualInteractions[mutualKey] - now) / 1000);
+    // 2. 상대가 나에게 코드를 입력했는지 확인 (역방향 쿨타임)
+    if (gameState.receivedInteractions[targetCode] && now < gameState.receivedInteractions[targetCode]) {
+        const remainingTime = Math.ceil((gameState.receivedInteractions[targetCode] - now) / 1000);
         alert(`이 플레이어가 최근에 당신과 상호작용했습니다. ${remainingTime}초 후에 다시 시도하세요.`);
         return;
     }
@@ -546,7 +562,6 @@ async function submitCode() {
         let targetPlayer = null;
         let targetPlayerId = null;
         
-        // 모든 활성 플레이어 중에서 해당 시크릿 코드를 가진 플레이어 찾기
         playersSnapshot.forEach(doc => {
             const data = doc.data();
             if (data.secretCode === targetCode) {
@@ -567,14 +582,14 @@ async function submitCode() {
             throw new Error('이미 게임에서 제외된 플레이어의 코드입니다.');
         }
 
+        // 상호작용 처리
         const result = await processSecretCode(targetPlayer, targetPlayerId);
         
-        // 3. 상호작용 쿨다운 설정 (내가 상대 코드 입력)
-        gameState.interactionCooldowns[targetCode] = now + 180000; // 3분
+        // 3. 내가 상대 코드를 입력한 쿨다운 설정 (영구 차단)
+        gameState.interactionCooldowns[targetCode] = Number.MAX_SAFE_INTEGER;
         
-        // 4. 양방향 상호작용 쿨다운 설정 (상대가 내 코드 입력하는 것을 막음)
-        const reverseMutualKey = `${mySecretCode}_${targetCode}`;
-        gameState.mutualInteractions[reverseMutualKey] = now + 180000; // 3분
+        // 4. 상대방 Firestore에 내가 상호작용했다는 기록 저장
+        await recordInteractionToTarget(targetPlayerId, mySecretCode);
         
         setTimeout(() => {
             document.getElementById('codeLoading').style.display = 'none';
@@ -589,6 +604,25 @@ async function submitCode() {
         document.getElementById('codeLoading').style.display = 'none';
         alert(error.message);
         console.error('시크릿 코드 처리 오류:', error);
+    }
+}
+
+// 상대방에게 상호작용 기록 저장
+async function recordInteractionToTarget(targetPlayerId, mySecretCode) {
+    try {
+        const interactionRecord = {
+            fromSecretCode: mySecretCode,
+            timestamp: Date.now(),
+            cooldownUntil: Date.now() + 180000 // 3분 쿨다운
+        };
+        
+        await db.collection('activePlayers').doc(targetPlayerId).update({
+            [`receivedInteractions.${mySecretCode}`]: interactionRecord
+        });
+        
+        console.log(`상대방(${targetPlayerId})에게 상호작용 기록 저장됨`);
+    } catch (error) {
+        console.error('상호작용 기록 저장 오류:', error);
     }
 }
 
