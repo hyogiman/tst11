@@ -1,14 +1,23 @@
 function setupRealtimeListener() {
     // 기존 리스너가 있다면 해제
     if (gameState.realtimeListener) {
-        gameState.realtimeListener();
+        try {
+            gameState.realtimeListener();
+        } catch (error) {
+            console.error('기존 리스너 해제 오류:', error);
+        }
         gameState.realtimeListener = null;
+    }
+
+    // 로그인 상태가 아니면 리스너 설정 안 함
+    if (!gameState.isLoggedIn || !gameState.player) {
+        return;
     }
 
     // 새 리스너 설정
     gameState.realtimeListener = db.collection('activePlayers').doc(gameState.player.loginCode)
         .onSnapshot((doc) => {
-            // 로그아웃 상태에서는 리스너 실행 안 함
+            // 로그아웃 상태이거나 강제 제거 플래그가 있으면 리스너 실행 안 함
             if (!gameState.isLoggedIn) {
                 return;
             }
@@ -21,29 +30,60 @@ function setupRealtimeListener() {
                     gameState.receivedInteractions = data.receivedInteractions;
                 }
                 
-                // 사망하거나 비활성화된 경우 강제 로그아웃 (단, 정상 로그아웃이 아닌 경우만)
+                // 사망하거나 비활성화된 경우 강제 로그아웃 (관리자나 범인에 의한 제거)
                 if (!data.isAlive || !data.isActive) {
                     if (gameState.isAlive && gameState.isLoggedIn) {
-                        console.log('게임에서 제외되어 강제 로그아웃됩니다.');
+                        console.log('관리자나 범인에 의해 게임에서 제외됩니다.');
                         
-                        // 실시간 리스너 먼저 해제
+                        // 실시간 리스너 즉시 해제
                         if (gameState.realtimeListener) {
-                            gameState.realtimeListener();
+                            try {
+                                gameState.realtimeListener();
+                            } catch (error) {
+                                console.error('강제 제거 시 리스너 해제 오류:', error);
+                            }
                             gameState.realtimeListener = null;
                         }
                         
-                        // 강제 로그아웃 처리
+                        // 상태 변경
                         gameState.isAlive = false;
                         gameState.isLoggedIn = false;
                         
                         // UI 초기화
-                        resetUIToLogin();
+                        document.querySelectorAll('.screen').forEach(screen => {
+                            screen.classList.remove('active');
+                        });
+                        
+                        const loginScreen = document.getElementById('loginScreen');
+                        if (loginScreen) {
+                            loginScreen.classList.add('active');
+                        }
+                        
+                        const bottomNav = document.getElementById('bottomNav');
+                        if (bottomNav) {
+                            bottomNav.style.display = 'none';
+                        }
+                        
+                        // 게임 상태 초기화
+                        gameState = {
+                            isLoggedIn: false,
+                            player: null,
+                            role: null,
+                            secretCode: null,
+                            results: [],
+                            isAlive: true,
+                            deathTimer: null,
+                            interactionCooldowns: {},
+                            receivedInteractions: {},
+                            realtimeListener: null
+                        };
                         
                         alert('게임에서 제외되었습니다. 다시 접속할 수 없습니다.');
                     }
                     return;
                 }
                 
+                // 결과 업데이트
                 if (data.results && data.results.length !== gameState.results.length) {
                     gameState.results = data.results;
                     setupResultScreen().catch(error => {
@@ -51,15 +91,18 @@ function setupRealtimeListener() {
                     });
                 }
             } else {
-                // 문서가 삭제된 경우에도 강제 로그아웃
+                // 문서가 삭제된 경우
                 if (gameState.isLoggedIn) {
                     console.log('계정이 삭제되었습니다.');
-                    // 실시간 리스너 해제
                     if (gameState.realtimeListener) {
-                        gameState.realtimeListener();
+                        try {
+                            gameState.realtimeListener();
+                        } catch (error) {
+                            console.error('문서 삭제 시 리스너 해제 오류:', error);
+                        }
                         gameState.realtimeListener = null;
                     }
-                    location.reload(); // 페이지 새로고침
+                    location.reload();
                 }
             }
         });
@@ -401,10 +444,14 @@ function completeLogin() {
     const bottomNav = document.getElementById('bottomNav');
     bottomNav.style.display = 'flex';
     
+    // 네비게이션 버튼 활성화
     document.getElementById('roleNavBtn').classList.remove('disabled');
     document.getElementById('codeInputNavBtn').classList.remove('disabled');
     document.getElementById('resultNavBtn').classList.remove('disabled');
     document.getElementById('logoutNavBtn').style.display = 'flex';
+    
+    // 홈 버튼 활성화
+    document.getElementById('homeNavBtn').classList.add('active');
     
     setupRoleCard();
     setupResultScreen().catch(error => {
@@ -1083,6 +1130,12 @@ async function executeKill(killIndex) {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('페이지 로드 완료');
     
+    // 초기 상태: 하단 네비게이션 숨김
+    const bottomNav = document.getElementById('bottomNav');
+    if (bottomNav) {
+        bottomNav.style.display = 'none';
+    }
+    
     // 버튼 이벤트 리스너 등록
     document.getElementById('quickLoginButton').addEventListener('click', quickLogin);
     document.getElementById('registerButton').addEventListener('click', register);
@@ -1090,11 +1143,43 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('showRegisterButton').addEventListener('click', showRegisterForm);
     document.getElementById('showLoginButton').addEventListener('click', showLoginForm);
     
-    // 네비게이션 버튼 이벤트 리스너 등록
-    document.getElementById('homeNavBtn').addEventListener('click', () => showScreen('home'));
-    document.getElementById('roleNavBtn').addEventListener('click', () => showScreen('role'));
-    document.getElementById('codeInputNavBtn').addEventListener('click', () => showScreen('codeInput'));
-    document.getElementById('resultNavBtn').addEventListener('click', () => showScreen('result'));
+    // 네비게이션 버튼 이벤트 리스너 등록 (로그인 상태에서만 작동)
+    document.getElementById('homeNavBtn').addEventListener('click', (e) => {
+        if (!gameState.isLoggedIn) {
+            e.preventDefault();
+            console.log('로그인이 필요합니다.');
+            return;
+        }
+        showScreen('home');
+    });
+    
+    document.getElementById('roleNavBtn').addEventListener('click', (e) => {
+        if (!gameState.isLoggedIn) {
+            e.preventDefault();
+            console.log('로그인이 필요합니다.');
+            return;
+        }
+        showScreen('role');
+    });
+    
+    document.getElementById('codeInputNavBtn').addEventListener('click', (e) => {
+        if (!gameState.isLoggedIn) {
+            e.preventDefault();
+            console.log('로그인이 필요합니다.');
+            return;
+        }
+        showScreen('codeInput');
+    });
+    
+    document.getElementById('resultNavBtn').addEventListener('click', (e) => {
+        if (!gameState.isLoggedIn) {
+            e.preventDefault();
+            console.log('로그인이 필요합니다.');
+            return;
+        }
+        showScreen('result');
+    });
+    
     document.getElementById('logoutNavBtn').addEventListener('click', logout);
     
     // 입력 필드 이벤트
@@ -1128,7 +1213,4 @@ document.addEventListener('DOMContentLoaded', function() {
             submitCode();
         }
     });
-
-    // 하단 네비게이션 초기 숨김
-    document.getElementById('bottomNav').style.display = 'none';
 });
