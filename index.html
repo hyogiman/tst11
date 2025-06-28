@@ -5,7 +5,370 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>추리 게임</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🕵️</text></svg>">
-    <link rel="stylesheet" href="styles.css">
+    <style>
+        /* 기본 스타일 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+            color: #333;
+        }
+
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+            position: relative;
+            box-shadow: 0 0 20px rgba(0,0,0,0.3);
+        }
+
+        /* 헤더 */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 1.8em;
+            margin-bottom: 5px;
+        }
+
+        .header .subtitle {
+            font-size: 0.9em;
+            opacity: 0.9;
+        }
+
+        /* 콘텐츠 */
+        .content {
+            padding: 20px;
+            padding-bottom: 100px;
+        }
+
+        .screen {
+            display: none;
+        }
+
+        .screen.active {
+            display: block;
+        }
+
+        /* 로그인 화면 */
+        .login-form {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        /* 버튼 */
+        .btn {
+            width: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+        }
+
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* 역할 카드 */
+        .role-card {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            margin: 20px 0;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+        }
+
+        .role-card.detective {
+            background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+        }
+
+        .role-card.criminal {
+            background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+        }
+
+        .role-card.merchant {
+            background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
+            color: #333;
+        }
+
+        .role-title {
+            font-size: 2em;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+
+        .role-description {
+            font-size: 1.1em;
+            line-height: 1.5;
+            margin-bottom: 15px;
+        }
+
+        .secret-code {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 10px;
+            margin-top: 15px;
+            border: 2px dashed rgba(255,255,255,0.5);
+        }
+
+        .secret-code-label {
+            font-size: 0.9em;
+            margin-bottom: 5px;
+            opacity: 0.9;
+        }
+
+        .secret-code-value {
+            font-size: 1.8em;
+            font-weight: 700;
+            letter-spacing: 3px;
+            text-align: center;
+        }
+
+        /* 코드 입력 화면 */
+        .code-input-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin-bottom: 20px;
+        }
+
+        .code-input-title {
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        /* 결과 목록 */
+        .result-list {
+            margin-top: 20px;
+        }
+
+        .result-item {
+            background: white;
+            border: 1px solid #e9ecef;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .result-item:hover {
+            background: #f8f9fa;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        .result-item-title {
+            font-weight: 600;
+            margin-bottom: 5px;
+        }
+
+        .result-item-subtitle {
+            font-size: 0.9em;
+            color: #666;
+        }
+
+        .result-item-value {
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-weight: 700;
+            color: #27ae60;
+        }
+
+        /* 공격 버튼 */
+        .attack-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            font-size: 0.9em;
+            cursor: pointer;
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .attack-btn:hover {
+            background: #c0392b;
+        }
+
+        /* 하단 네비게이션 */
+        .bottom-nav {
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            width: 100% !important;
+            max-width: 400px !important;
+            background: white !important;
+            border-top: 1px solid #e9ecef !important;
+            display: flex !important;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1) !important;
+            z-index: 1000 !important;
+            visibility: visible !important;
+        }
+
+        .nav-item {
+            flex: 1;
+            padding: 15px 5px;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            border: none;
+            background: none;
+            font-size: 0.85em;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .nav-item:hover {
+            background: #f8f9fa;
+        }
+
+        .nav-item.active {
+            background: #667eea;
+            color: white;
+        }
+
+        .nav-item.disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+            pointer-events: none;
+        }
+
+        .nav-item.disabled:hover {
+            background: none;
+        }
+
+        .nav-icon {
+            font-size: 1.2em;
+            margin-bottom: 3px;
+            display: block;
+        }
+
+        /* 상태 메시지 */
+        .status-message {
+            background: #d4edda;
+            color: #155724;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 15px 0;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border-color: #f5c6cb;
+        }
+
+        .status-message.warning {
+            background: #fff3cd;
+            color: #856404;
+            border-color: #ffeaa7;
+        }
+
+        /* 로딩 애니메이션 */
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        /* 반응형 */
+        @media (max-width: 480px) {
+            .container {
+                width: 100%;
+                border-radius: 0;
+            }
+            
+            .content {
+                padding: 15px;
+            }
+            
+            .nav-item {
+                font-size: 0.75em;
+            }
+        }
+    </style>
 </head>
 <body>
     <div class="container">
@@ -75,8 +438,13 @@
                 <h2 style="margin-bottom: 20px;">내 정보</h2>
                 
                 <div class="code-input-section">
-                    <div class="code-input-title">내 역할</div>
-                    <div id="myRole" style="font-size: 1.2em; font-weight: 600; color: #667eea;">-</div>
+                    <div class="code-input-title">성명</div>
+                    <div id="myName" style="font-size: 1.2em; font-weight: 600; color: #667eea;">-</div>
+                </div>
+
+                <div class="code-input-section">
+                    <div class="code-input-title">직위</div>
+                    <div id="myPosition" style="font-size: 1.2em; font-weight: 600; color: #667eea;">-</div>
                 </div>
 
                 <div class="code-input-section">
