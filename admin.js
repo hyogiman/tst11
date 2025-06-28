@@ -31,18 +31,7 @@ function adminLogout() {
         adminState.isLoggedIn = false;
         adminState.currentScreen = 'overview';
         
-        // 플레이어 상세에서 돌아가기
-    document.getElementById('backToPlayersBtn').addEventListener('click', backToPlayers);
-
-    // 설정 저장
-    document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
-
-    // 로그아웃
-    document.getElementById('logoutBtn').addEventListener('click', adminLogout);
-
-    // 실시간 리스너 설정
-    setupRealtimeListeners();
-}); 모든 화면 숨기기
+        // 모든 화면 숨기기
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.remove('active');
         });
@@ -159,7 +148,6 @@ async function loadGameStatus() {
     try {
         const gameDoc = await db.collection('gameSettings').doc('gameStatus').get();
         const isActive = gameDoc.exists ? gameDoc.data().isActive : false;
-
         updateGameStatusUI(isActive);
     } catch (error) {
         console.error('게임 상태 로드 오류:', error);
@@ -188,10 +176,8 @@ async function startGame() {
             startedAt: firebase.firestore.FieldValue.serverTimestamp(),
             startedBy: 'admin'
         });
-
         updateGameStatusUI(true);
         showAlert('게임이 시작되었습니다.', 'success');
-        
     } catch (error) {
         console.error('게임 시작 오류:', error);
         showAlert('게임 시작 중 오류가 발생했습니다.', 'error');
@@ -208,10 +194,8 @@ async function stopGame() {
             stoppedAt: firebase.firestore.FieldValue.serverTimestamp(),
             stoppedBy: 'admin'
         });
-
         updateGameStatusUI(false);
         showAlert('게임이 중지되었습니다.', 'warning');
-        
     } catch (error) {
         console.error('게임 중지 오류:', error);
         showAlert('게임 중지 중 오류가 발생했습니다.', 'error');
@@ -243,7 +227,6 @@ async function resetGame() {
         updateGameStatusUI(false);
         loadDashboardData(); // 데이터 새로고침
         showAlert('게임이 초기화되었습니다.', 'success');
-        
     } catch (error) {
         console.error('게임 초기화 오류:', error);
         showAlert('게임 초기화 중 오류가 발생했습니다.', 'error');
@@ -296,7 +279,6 @@ async function createLoginCode() {
         showAlert('로그인 코드가 생성되었습니다.', 'success');
         loadLoginCodesList();
         loadOverviewData();
-
     } catch (error) {
         console.error('로그인 코드 생성 오류:', error);
         showAlert('로그인 코드 생성 중 오류가 발생했습니다.', 'error');
@@ -338,7 +320,6 @@ async function loadLoginCodesList() {
         });
 
         container.innerHTML = html;
-
     } catch (error) {
         console.error('로그인 코드 목록 로드 오류:', error);
     }
@@ -353,14 +334,13 @@ async function deleteLoginCode(loginCode) {
         showAlert('로그인 코드가 삭제되었습니다.', 'success');
         loadLoginCodesList();
         loadOverviewData();
-
     } catch (error) {
         console.error('로그인 코드 삭제 오류:', error);
         showAlert('로그인 코드 삭제 중 오류가 발생했습니다.', 'error');
     }
 }
 
-// 플레이어 데이터 로드 - 수정된 버전
+// 플레이어 데이터 로드
 async function loadPlayersData() {
     try {
         const registeredSnapshot = await db.collection('registeredUsers').get();
@@ -379,7 +359,7 @@ async function loadPlayersData() {
             const userData = doc.data();
             const activeData = activePlayersMap[doc.id];
             
-            // 상태 판단 로직 개선
+            // 상태 판단 로직
             let statusText = '';
             let statusClass = '';
             let showReviveButton = false;
@@ -437,7 +417,6 @@ async function loadPlayersData() {
                 </td>
             `;
         });
-
     } catch (error) {
         console.error('플레이어 데이터 로드 오류:', error);
     }
@@ -462,7 +441,7 @@ async function showPlayerDetail(playerId) {
 
         document.getElementById('playerDetailTitle').textContent = `${userData.name} 상세 정보`;
         
-        // 상태 판단 로직 개선
+        // 상태 판단
         let statusText = '';
         if (activeData) {
             if (activeData.isActive) {
@@ -487,10 +466,7 @@ async function showPlayerDetail(playerId) {
         `;
 
         if (activeData && activeData.results && activeData.results.length > 0) {
-            html += `
-                <div class="player-detail">
-                    <h3>활동 기록 (${activeData.results.length}개)</h3>
-            `;
+            html += `<div class="player-detail"><h3>활동 기록 (${activeData.results.length}개)</h3>`;
 
             activeData.results.forEach((result, index) => {
                 let actionText = '';
@@ -554,7 +530,6 @@ async function showPlayerDetail(playerId) {
             screen.classList.remove('active');
         });
         document.getElementById('playerDetailScreen').classList.add('active');
-
     } catch (error) {
         console.error('플레이어 상세 정보 로드 오류:', error);
     }
@@ -574,32 +549,12 @@ async function deletePlayer(playerId) {
         // 활성 플레이어 삭제 (있는 경우)
         const activeRef = db.collection('activePlayers').doc(playerId);
         batch.delete(activeRef);
-        
-        // 로그인 코드 미사용 상태로 변경
-        const loginCodeQuery = await db.collection('loginCodes').get();
-        loginCodeQuery.forEach(doc => {
-            const data = doc.data();
-            if (data.usedBy && data.used) {
-                // 해당 플레이어가 사용한 로그인 코드를 찾아서 미사용으로 변경
-                const userDoc = db.collection('registeredUsers').doc(playerId);
-                userDoc.get().then(userSnapshot => {
-                    if (userSnapshot.exists && doc.id === playerId) {
-                        batch.update(doc.ref, {
-                            used: false,
-                            usedBy: firebase.firestore.FieldValue.delete(),
-                            usedAt: firebase.firestore.FieldValue.delete()
-                        });
-                    }
-                });
-            }
-        });
 
         await batch.commit();
 
         showAlert('플레이어가 삭제되었습니다.', 'success');
         loadPlayersData();
         loadOverviewData();
-
     } catch (error) {
         console.error('플레이어 삭제 오류:', error);
         showAlert('플레이어 삭제 중 오류가 발생했습니다.', 'error');
@@ -623,7 +578,7 @@ async function revivePlayer(playerId) {
                 revivedBy: 'admin'
             });
         } else {
-            // 문서가 없으면 새로 생성 (등록된 사용자 정보 가져와서)
+            // 문서가 없으면 새로 생성
             const userDoc = await db.collection('registeredUsers').doc(playerId).get();
             if (userDoc.exists) {
                 const userData = userDoc.data();
@@ -647,7 +602,6 @@ async function revivePlayer(playerId) {
         loadPlayersData();
         loadOverviewData();
         showAlert('플레이어가 부활되었습니다. (미접속 상태)', 'success');
-
     } catch (error) {
         console.error('플레이어 부활 오류:', error);
         showAlert('플레이어 부활 중 오류가 발생했습니다.', 'error');
@@ -664,7 +618,6 @@ async function loadSettingsData() {
             document.getElementById('maxKillsSetting').value = settings.maxKills || 3;
             document.getElementById('killTimerSetting').value = settings.killTimer || 180;
         }
-
     } catch (error) {
         console.error('설정 데이터 로드 오류:', error);
     }
@@ -684,7 +637,6 @@ async function saveSettings() {
         });
 
         showAlert('설정이 저장되었습니다.', 'success');
-
     } catch (error) {
         console.error('설정 저장 오류:', error);
         showAlert('설정 저장 중 오류가 발생했습니다.', 'error');
@@ -794,4 +746,15 @@ document.addEventListener('DOMContentLoaded', function() {
         e.target.value = e.target.value.toUpperCase();
     });
 
-    //
+    // 플레이어 상세에서 돌아가기
+    document.getElementById('backToPlayersBtn').addEventListener('click', backToPlayers);
+
+    // 설정 저장
+    document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
+
+    // 로그아웃
+    document.getElementById('logoutBtn').addEventListener('click', adminLogout);
+
+    // 실시간 리스너 설정
+    setupRealtimeListeners();
+});
