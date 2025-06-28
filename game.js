@@ -1,4 +1,15 @@
-// 게임 상태
+// UI 관련 함수들
+function showScreen(screenName) {
+    console.log('화면 전환:', screenName);
+    
+    // 로그인이 안 된 상태에서 다른 화면 접근 방지
+    if (!gameState.isLoggedIn) {
+        console.log('로그인이 필요합니다.');
+        // 로그인 화면으로 이동
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.classList.remove('active');
+        });
+        // 게임 상태
 let gameState = {
     isLoggedIn: false,
     player: null,
@@ -6,7 +17,8 @@ let gameState = {
     secretCode: null,
     results: [],
     isAlive: true,
-    deathTimer: null
+    deathTimer: null,
+    interactionCooldowns: {} // 상호작용 쿨다운 관리
 };
 
 // 기본 시크릿 코드
@@ -374,6 +386,14 @@ async function submitCode() {
         return;
     }
 
+    // 쿨다운 체크
+    const now = Date.now();
+    if (gameState.interactionCooldowns[targetCode] && now < gameState.interactionCooldowns[targetCode]) {
+        const remainingTime = Math.ceil((gameState.interactionCooldowns[targetCode] - now) / 1000);
+        alert(`이 플레이어와는 ${remainingTime}초 후에 다시 상호작용할 수 있습니다.`);
+        return;
+    }
+
     document.getElementById('codeLoading').style.display = 'block';
 
     try {
@@ -408,6 +428,9 @@ async function submitCode() {
 
         const result = await processSecretCode(targetPlayer, targetPlayerId);
         
+        // 상호작용 쿨다운 설정 (3분 = 180초)
+        gameState.interactionCooldowns[targetCode] = now + 180000;
+        
         setTimeout(() => {
             document.getElementById('codeLoading').style.display = 'none';
             displayCodeResult(result);
@@ -440,47 +463,21 @@ async function processSecretCode(targetPlayer, targetPlayerId) {
 
         switch (gameState.role) {
             case 'detective':
-                if (targetPlayer.role === 'merchant') {
-                    // 상인의 시크릿 코드별 맞춤 정보 가져오기
-                    const secretContent = await getSecretContentFromLoginCode(targetPlayer.secretCode);
-                    result.type = 'clue';
-                    result.title = '상인의 증언';
-                    result.content = secretContent || generateMerchantTestimony();
-                } else if (targetPlayer.role === 'criminal') {
-                    // 범인의 시크릿 코드별 맞춤 정보 가져오기
-                    const secretContent = await getSecretContentFromLoginCode(targetPlayer.secretCode);
-                    result.type = 'evidence';
-                    result.title = '결정적 증거';
-                    result.content = secretContent || generateCriminalEvidence();
-                } else {
-                    // 동료 탐정의 시크릿 코드별 맞춤 정보 가져오기
-                    const secretContent = await getSecretContentFromLoginCode(targetPlayer.secretCode);
-                    result.type = 'clue';
-                    result.title = '동료 탐정 정보';
-                    result.content = secretContent || '동료 탐정과 정보를 공유했습니다.';
-                }
+                // 관리자가 설정한 제목과 내용 사용
+                const secretInfo = await getSecretInfoFromLoginCode(targetPlayer.secretCode);
+                result.type = targetPlayer.role === 'criminal' ? 'evidence' : 'clue';
+                result.title = secretInfo.title || (targetPlayer.role === 'criminal' ? '결정적 증거' : '상인의 증언');
+                result.content = secretInfo.content || (targetPlayer.role === 'criminal' ? generateCriminalEvidence() : generateMerchantTestimony());
                 break;
 
             case 'criminal':
-                const currentKillCount = myPlayerData.killCount || 0;
-                
-                if (currentKillCount >= 3) {
-                    throw new Error('이미 최대 제거 횟수(3회)에 도달했습니다.');
-                }
-
                 result.type = 'kill';
                 result.title = '제거 대상 확보';
-                // 범인은 상대방의 역할을 모르게 함
                 result.content = `${targetPlayer.name}을(를) 제거할 수 있습니다.`;
                 result.canKill = true;
                 result.executed = false;
-                // 실제 역할은 내부적으로만 저장 (UI에 표시 안 함)
                 result.targetRole = targetPlayer.role;
-                
-                await db.collection('activePlayers').doc(myPlayerId).update({
-                    killCount: currentKillCount + 1
-                });
-                
+                // 여기서는 killCount를 증가시키지 않음 (실제 공격 시에만 증가)
                 break;
 
             case 'merchant':
@@ -513,8 +510,8 @@ async function processSecretCode(targetPlayer, targetPlayerId) {
     }
 }
 
-// 로그인 코드에서 시크릿 콘텐츠 가져오기
-async function getSecretContentFromLoginCode(secretCode) {
+// 로그인 코드에서 시크릿 정보 가져오기 (제목 포함)
+async function getSecretInfoFromLoginCode(secretCode) {
     try {
         const loginCodesSnapshot = await db.collection('loginCodes')
             .where('secretCode', '==', secretCode)
@@ -523,13 +520,16 @@ async function getSecretContentFromLoginCode(secretCode) {
         
         if (!loginCodesSnapshot.empty) {
             const loginCodeData = loginCodesSnapshot.docs[0].data();
-            return loginCodeData.secretContent;
+            return {
+                title: loginCodeData.secretTitle,
+                content: loginCodeData.secretContent
+            };
         }
         
-        return null;
+        return { title: null, content: null };
     } catch (error) {
-        console.error('시크릿 콘텐츠 가져오기 오류:', error);
-        return null;
+        console.error('시크릿 정보 가져오기 오류:', error);
+        return { title: null, content: null };
     }
 }
 
@@ -595,8 +595,15 @@ function setupRoleCard() {
         </div>
     `;
 
-    document.getElementById('myRole').textContent = roleInfo.title;
+    // 역할/S.C 화면의 내 정보 설정 (역할 제거, 성명/직위 추가)
     document.getElementById('mySecretCode').textContent = gameState.secretCode;
+    
+    // 새로운 요소들 추가 (HTML에서 myRole을 myName과 myPosition으로 변경 필요)
+    const myNameElement = document.getElementById('myName');
+    const myPositionElement = document.getElementById('myPosition');
+    
+    if (myNameElement) myNameElement.textContent = gameState.player.name;
+    if (myPositionElement) myPositionElement.textContent = gameState.player.position;
 }
 
 async function setupResultScreen() {
@@ -768,33 +775,41 @@ async function executeKill(killIndex) {
         return;
     }
 
-    if (!confirm(`정말로 ${kill.targetName}을(를) 제거하시겠습니까? 3분 후 대상이 게임에서 제외됩니다.`)) {
+    if (!confirm(`정말로 ${kill.targetName}을(를) 제거하시겠습니까? 즉시 대상이 게임에서 완전히 제외됩니다.`)) {
         return;
     }
 
     try {
-        kill.executed = true;
-        kill.content = `${kill.targetName} 제거 실행됨 (3분 후 게임 종료)`;
-
         const myPlayerId = gameState.player.loginCode;
+        
+        // killCount 증가 (공격 버튼을 눌렀을 때)
+        const myPlayerDoc = await db.collection('activePlayers').doc(myPlayerId).get();
+        const myPlayerData = myPlayerDoc.data();
+        const currentKillCount = myPlayerData.killCount || 0;
+        
+        if (currentKillCount >= 3) {
+            alert('이미 최대 제거 횟수(3회)에 도달했습니다.');
+            return;
+        }
+
+        kill.executed = true;
+        kill.content = `${kill.targetName} 제거 완료`;
+
+        // killCount 증가 및 결과 업데이트
         await db.collection('activePlayers').doc(myPlayerId).update({
-            results: gameState.results
+            results: gameState.results,
+            killCount: currentKillCount + 1
         });
 
-        setTimeout(async () => {
-            try {
-                await db.collection('activePlayers').doc(kill.targetPlayerId).update({
-                    isAlive: false,
-                    deathTime: firebase.firestore.FieldValue.serverTimestamp(),
-                    killedBy: myPlayerId
-                });
-                console.log(`플레이어 ${kill.targetPlayerId} 제거 완료`);
-            } catch (error) {
-                console.error('플레이어 제거 오류:', error);
-            }
-        }, 180000);
+        // 즉시 대상 플레이어 제거 및 강제 로그아웃
+        await db.collection('activePlayers').doc(kill.targetPlayerId).update({
+            isAlive: false,
+            isActive: false, // 강제 로그아웃
+            deathTime: firebase.firestore.FieldValue.serverTimestamp(),
+            killedBy: myPlayerId
+        });
 
-        alert('제거 명령이 실행되었습니다. 3분 후 대상이 게임에서 제외됩니다.');
+        alert('제거 명령이 실행되었습니다. 대상이 즉시 게임에서 제외됩니다.');
         setupResultScreen().catch(error => {
             console.error('결과 화면 새로고침 오류:', error);
         });
