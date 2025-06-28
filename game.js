@@ -1,45 +1,40 @@
 function setupRealtimeListener() {
-    db.collection('activePlayers').doc(gameState.player.loginCode)
+    // 기존 리스너가 있다면 해제
+    if (gameState.realtimeListener) {
+        gameState.realtimeListener();
+        gameState.realtimeListener = null;
+    }
+
+    // 새 리스너 설정
+    gameState.realtimeListener = db.collection('activePlayers').doc(gameState.player.loginCode)
         .onSnapshot((doc) => {
+            // 로그아웃 상태에서는 리스너 실행 안 함
+            if (!gameState.isLoggedIn) {
+                return;
+            }
+
             if (doc.exists) {
                 const data = doc.data();
                 
                 // 사망하거나 비활성화된 경우 강제 로그아웃 (단, 정상 로그아웃이 아닌 경우만)
                 if (!data.isAlive || !data.isActive) {
                     if (gameState.isAlive && gameState.isLoggedIn) {
+                        console.log('게임에서 제외되어 강제 로그아웃됩니다.');
+                        
+                        // 실시간 리스너 먼저 해제
+                        if (gameState.realtimeListener) {
+                            gameState.realtimeListener();
+                            gameState.realtimeListener = null;
+                        }
+                        
+                        // 강제 로그아웃 처리
                         gameState.isAlive = false;
                         gameState.isLoggedIn = false;
                         
-                        // 강제 로그아웃 처리 (알림 없이)
-                        console.log('게임에서 제외되어 강제 로그아웃됩니다.');
+                        // UI 초기화
+                        resetUIToLogin();
                         
-                        // 게임 상태 완전 초기화
-                        gameState = {
-                            isLoggedIn: false,
-                            player: null,
-                            role: null,
-                            secretCode: null,
-                            results: [],
-                            isAlive: true,
-                            deathTimer: null,
-                            interactionCooldowns: {},
-                            mutualInteractions: {}
-                        };
-
-                        // 로그인 화면으로 이동
-                        document.querySelectorAll('.screen').forEach(screen => {
-                            screen.classList.remove('active');
-                        });
-                        document.getElementById('loginScreen').classList.add('active');
-                        
-                        // 하단 네비게이션 숨기기
-                        document.getElementById('bottomNav').style.display = 'none';
-                        
-                        // 입력 필드 초기화
-                        document.getElementById('quickLoginCode').value = '';
-                        document.getElementById('registerCode').value = '';
-                        document.getElementById('playerName').value = '';
-                        document.getElementById('playerPosition').value = '';
+                        alert('게임에서 제외되었습니다. 다시 접속할 수 없습니다.');
                     }
                     return;
                 }
@@ -54,6 +49,11 @@ function setupRealtimeListener() {
                 // 문서가 삭제된 경우에도 강제 로그아웃
                 if (gameState.isLoggedIn) {
                     console.log('계정이 삭제되었습니다.');
+                    // 실시간 리스너 해제
+                    if (gameState.realtimeListener) {
+                        gameState.realtimeListener();
+                        gameState.realtimeListener = null;
+                    }
                     location.reload(); // 페이지 새로고침
                 }
             }
@@ -119,7 +119,8 @@ let gameState = {
     isAlive: true,
     deathTimer: null,
     interactionCooldowns: {}, // 상호작용 쿨다운 관리
-    mutualInteractions: {} // 양방향 상호작용 관리
+    mutualInteractions: {}, // 양방향 상호작용 관리
+    realtimeListener: null // 실시간 리스너 참조
 };
 
 // 기본 시크릿 코드
