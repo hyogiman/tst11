@@ -66,7 +66,7 @@ function showScreen(screenName) {
         targetScreen.classList.add('active');
     }
     
-    // 네비게이션 활성화 상태 변경 (해당 버튼이 있는 경우만)
+    // 네비게이션 활성화 상태 변경
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
     });
@@ -104,21 +104,17 @@ async function loadDashboardData() {
 // 개요 데이터 로드
 async function loadOverviewData() {
     try {
-        // 생성된 로그인 코드 수
         const loginCodesSnapshot = await db.collection('loginCodes').get();
         const loginCodesCount = loginCodesSnapshot.size;
 
-        // 등록된 플레이어 수
         const registeredSnapshot = await db.collection('registeredUsers').get();
         const registeredCount = registeredSnapshot.size;
 
-        // 활성 플레이어 수
         const activeSnapshot = await db.collection('activePlayers')
             .where('isActive', '==', true)
             .get();
         const activeCount = activeSnapshot.size;
 
-        // 생존/사망자 수
         let aliveCount = 0;
         let deadCount = 0;
         
@@ -131,7 +127,6 @@ async function loadOverviewData() {
             }
         });
 
-        // UI 업데이트
         document.getElementById('loginCodesCount').textContent = loginCodesCount;
         document.getElementById('registeredCount').textContent = registeredCount;
         document.getElementById('activeCount').textContent = activeCount;
@@ -160,10 +155,9 @@ function updateGameStatusUI(isActive) {
     const indicator = document.getElementById('gameStatusIndicator');
     const text = document.getElementById('gameStatusText');
 
-    indicator.className = `status-indicator ${isActive ? 'status-active' : 'status-inactive'}`;
+    indicator.className = 'status-indicator ' + (isActive ? 'status-active' : 'status-inactive');
     text.textContent = isActive ? '진행 중' : '중지됨';
 
-    // 버튼 상태 업데이트
     document.getElementById('startGameBtn').disabled = isActive;
     document.getElementById('stopGameBtn').disabled = !isActive;
 }
@@ -207,7 +201,6 @@ async function resetGame() {
     if (!confirm('정말 게임을 초기화하시겠습니까? 모든 플레이어 데이터가 삭제됩니다.')) return;
 
     try {
-        // 활성 플레이어 모두 삭제
         const activeSnapshot = await db.collection('activePlayers').get();
         const batch = db.batch();
         
@@ -217,7 +210,6 @@ async function resetGame() {
 
         await batch.commit();
 
-        // 게임 상태 중지
         await db.collection('gameSettings').doc('gameStatus').set({
             isActive: false,
             resetAt: firebase.firestore.FieldValue.serverTimestamp(),
@@ -225,7 +217,7 @@ async function resetGame() {
         });
 
         updateGameStatusUI(false);
-        loadDashboardData(); // 데이터 새로고침
+        loadDashboardData();
         showAlert('게임이 초기화되었습니다.', 'success');
     } catch (error) {
         console.error('게임 초기화 오류:', error);
@@ -252,14 +244,12 @@ async function createLoginCode() {
     }
 
     try {
-        // 중복 확인
         const existingCodeDoc = await db.collection('loginCodes').doc(loginCode).get();
         if (existingCodeDoc.exists) {
             alert('이미 존재하는 로그인 코드입니다.');
             return;
         }
 
-        // 로그인 코드 생성
         await db.collection('loginCodes').doc(loginCode).set({
             role: role,
             secretCode: secretCode,
@@ -270,7 +260,6 @@ async function createLoginCode() {
             createdBy: 'admin'
         });
 
-        // 입력 필드 초기화
         document.getElementById('newLoginCode').value = '';
         document.getElementById('newSecretCode').value = '';
         document.getElementById('newSecretTitle').value = '';
@@ -305,18 +294,16 @@ async function loadLoginCodesList() {
                 'merchant': '상인'
             };
 
-            html += `
-                <div class="list-item">
-                    <div class="list-item-header">
-                        <div class="list-item-title">${doc.id} - ${roleNames[data.role]}</div>
-                        <button class="btn danger" onclick="deleteLoginCode('${doc.id}')" style="width: auto; padding: 5px 10px; font-size: 12px;">삭제</button>
-                    </div>
-                    <div class="list-item-subtitle">시크릿 코드: ${data.secretCode}</div>
-                    <div class="list-item-subtitle">제목: ${data.secretTitle || '제목 없음'}</div>
-                    <div class="list-item-subtitle">상태: ${data.used ? '사용됨' : '미사용'}</div>
-                    <div style="margin-top: 8px; font-size: 14px; color: #555;">${data.secretContent}</div>
-                </div>
-            `;
+            html += '<div class="list-item">';
+            html += '<div class="list-item-header">';
+            html += '<div class="list-item-title">' + doc.id + ' - ' + roleNames[data.role] + '</div>';
+            html += '<button class="btn danger" onclick="deleteLoginCode(\'' + doc.id + '\')" style="width: auto; padding: 5px 10px; font-size: 12px;">삭제</button>';
+            html += '</div>';
+            html += '<div class="list-item-subtitle">시크릿 코드: ' + data.secretCode + '</div>';
+            html += '<div class="list-item-subtitle">제목: ' + (data.secretTitle || '제목 없음') + '</div>';
+            html += '<div class="list-item-subtitle">상태: ' + (data.used ? '사용됨' : '미사용') + '</div>';
+            html += '<div style="margin-top: 8px; font-size: 14px; color: #555;">' + data.secretContent + '</div>';
+            html += '</div>';
         });
 
         container.innerHTML = html;
@@ -346,7 +333,6 @@ async function loadPlayersData() {
         const registeredSnapshot = await db.collection('registeredUsers').get();
         const activeSnapshot = await db.collection('activePlayers').get();
         
-        // 활성 플레이어 데이터 맵 생성
         const activePlayersMap = {};
         activeSnapshot.forEach(doc => {
             activePlayersMap[doc.id] = doc.data();
@@ -359,14 +345,12 @@ async function loadPlayersData() {
             const userData = doc.data();
             const activeData = activePlayersMap[doc.id];
             
-            // 상태 판단 로직
             let statusText = '';
             let statusClass = '';
             let showReviveButton = false;
             
             if (activeData) {
                 if (activeData.isActive) {
-                    // 접속 중인 상태
                     if (activeData.isAlive) {
                         statusText = '생존';
                         statusClass = 'status-alive';
@@ -376,7 +360,6 @@ async function loadPlayersData() {
                         showReviveButton = true;
                     }
                 } else {
-                    // 접속하지 않은 상태
                     if (activeData.isAlive) {
                         statusText = '미접속';
                         statusClass = '';
@@ -387,7 +370,6 @@ async function loadPlayersData() {
                     }
                 }
             } else {
-                // activePlayers에 기록이 없는 경우
                 statusText = '미접속';
                 statusClass = '';
             }
@@ -399,23 +381,28 @@ async function loadPlayersData() {
             };
 
             const row = tbody.insertRow();
-            row.innerHTML = `
-                <td>${doc.id}</td>
-                <td>${userData.name}</td>
-                <td>${roleNames[userData.role]}</td>
-                <td>
-                    <span class="${statusClass}" style="color: ${statusClass === 'status-alive' ? '#27ae60' : statusClass === 'status-dead' ? '#e74c3c' : '#6c757d'};">
-                        ${statusText}
-                    </span>
-                </td>
-                <td>
-                    <button class="btn secondary" onclick="showPlayerDetail('${doc.id}')" style="width: auto; padding: 5px 10px; font-size: 12px;">상세</button>
-                    <button class="btn danger" onclick="deletePlayer('${doc.id}')" style="width: auto; padding: 5px 10px; font-size: 12px;">삭제</button>
-                    ${showReviveButton ? 
-                        `<button class="btn success" onclick="revivePlayer('${doc.id}')" style="width: auto; padding: 5px 10px; font-size: 12px;">부활</button>` : ''
-                    }
-                </td>
-            `;
+            let html = '<td>' + doc.id + '</td>';
+            html += '<td>' + userData.name + '</td>';
+            html += '<td>' + roleNames[userData.role] + '</td>';
+            html += '<td>';
+            html += '<span class="' + statusClass + '" style="color: ';
+            if (statusClass === 'status-alive') {
+                html += '#27ae60';
+            } else if (statusClass === 'status-dead') {
+                html += '#e74c3c';
+            } else {
+                html += '#6c757d';
+            }
+            html += ';">' + statusText + '</span>';
+            html += '</td>';
+            html += '<td>';
+            html += '<button class="btn secondary" onclick="showPlayerDetail(\'' + doc.id + '\')" style="width: auto; padding: 5px 10px; font-size: 12px;">상세</button>';
+            html += '<button class="btn danger" onclick="deletePlayer(\'' + doc.id + '\')" style="width: auto; padding: 5px 10px; font-size: 12px;">삭제</button>';
+            if (showReviveButton) {
+                html += '<button class="btn success" onclick="revivePlayer(\'' + doc.id + '\')" style="width: auto; padding: 5px 10px; font-size: 12px;">부활</button>';
+            }
+            html += '</td>';
+            row.innerHTML = html;
         });
     } catch (error) {
         console.error('플레이어 데이터 로드 오류:', error);
@@ -439,9 +426,8 @@ async function showPlayerDetail(playerId) {
             'merchant': '상인'
         };
 
-        document.getElementById('playerDetailTitle').textContent = `${userData.name} 상세 정보`;
+        document.getElementById('playerDetailTitle').textContent = userData.name + ' 상세 정보';
         
-        // 상태 판단
         let statusText = '';
         if (activeData) {
             if (activeData.isActive) {
@@ -453,33 +439,31 @@ async function showPlayerDetail(playerId) {
             statusText = '<span style="color: #6c757d;">미접속</span>';
         }
         
-        let html = `
-            <div class="player-detail">
-                <h3>기본 정보</h3>
-                <p><strong>로그인 코드:</strong> ${playerId}</p>
-                <p><strong>이름:</strong> ${userData.name}</p>
-                <p><strong>직위:</strong> ${userData.position}</p>
-                <p><strong>역할:</strong> ${roleNames[userData.role]}</p>
-                <p><strong>시크릿 코드:</strong> ${userData.secretCode}</p>
-                <p><strong>상태:</strong> ${statusText}</p>
-            </div>
-        `;
+        let html = '<div class="player-detail">';
+        html += '<h3>기본 정보</h3>';
+        html += '<p><strong>로그인 코드:</strong> ' + playerId + '</p>';
+        html += '<p><strong>이름:</strong> ' + userData.name + '</p>';
+        html += '<p><strong>직위:</strong> ' + userData.position + '</p>';
+        html += '<p><strong>역할:</strong> ' + roleNames[userData.role] + '</p>';
+        html += '<p><strong>시크릿 코드:</strong> ' + userData.secretCode + '</p>';
+        html += '<p><strong>상태:</strong> ' + statusText + '</p>';
+        html += '</div>';
 
         if (activeData && activeData.results && activeData.results.length > 0) {
-            html += `<div class="player-detail"><h3>활동 기록 (${activeData.results.length}개)</h3>`;
+            html += '<div class="player-detail"><h3>활동 기록 (' + activeData.results.length + '개)</h3>';
 
-            activeData.results.forEach((result, index) => {
+            activeData.results.forEach(function(result, index) {
                 let actionText = '';
                 let actionColor = '#666';
 
                 switch (result.type) {
                     case 'clue':
                     case 'evidence':
-                        actionText = `단서 수집: ${result.title}`;
+                        actionText = '단서 수집: ' + result.title;
                         actionColor = '#3498db';
                         break;
                     case 'kill':
-                        actionText = `제거 대상 확보: ${result.targetName}`;
+                        actionText = '제거 대상 확보: ' + result.targetName;
                         if (result.executed) {
                             actionText += ' (실행됨)';
                             actionColor = '#e74c3c';
@@ -488,44 +472,37 @@ async function showPlayerDetail(playerId) {
                         }
                         break;
                     case 'money':
-                        actionText = `거래 완료: +${result.amount}원`;
+                        actionText = '거래 완료: +' + result.amount + '원';
                         actionColor = '#27ae60';
                         break;
                 }
 
-                html += `
-                    <div class="activity-item">
-                        <div style="color: ${actionColor}; font-weight: 600;">${actionText}</div>
-                        <div class="activity-time">${result.timestamp}</div>
-                        <div style="margin-top: 5px; font-size: 13px;">${result.content}</div>
-                    </div>
-                `;
+                html += '<div class="activity-item">';
+                html += '<div style="color: ' + actionColor + '; font-weight: 600;">' + actionText + '</div>';
+                html += '<div class="activity-time">' + result.timestamp + '</div>';
+                html += '<div style="margin-top: 5px; font-size: 13px;">' + result.content + '</div>';
+                html += '</div>';
             });
 
             html += '</div>';
         }
 
         if (activeData && userData.role === 'merchant' && activeData.money) {
-            html += `
-                <div class="player-detail">
-                    <h3>수익 현황</h3>
-                    <p><strong>총 수익:</strong> ${activeData.money}원</p>
-                </div>
-            `;
+            html += '<div class="player-detail">';
+            html += '<h3>수익 현황</h3>';
+            html += '<p><strong>총 수익:</strong> ' + activeData.money + '원</p>';
+            html += '</div>';
         }
 
         if (activeData && userData.role === 'criminal' && activeData.killCount) {
-            html += `
-                <div class="player-detail">
-                    <h3>제거 현황</h3>
-                    <p><strong>제거 횟수:</strong> ${activeData.killCount}/3회</p>
-                </div>
-            `;
+            html += '<div class="player-detail">';
+            html += '<h3>제거 현황</h3>';
+            html += '<p><strong>제거 횟수:</strong> ' + activeData.killCount + '/3회</p>';
+            html += '</div>';
         }
 
         document.getElementById('playerDetailContent').innerHTML = html;
         
-        // 플레이어 상세 화면으로 전환
         document.querySelectorAll('.screen').forEach(screen => {
             screen.classList.remove('active');
         });
@@ -542,11 +519,9 @@ async function deletePlayer(playerId) {
     try {
         const batch = db.batch();
         
-        // 등록된 사용자 삭제
         const userRef = db.collection('registeredUsers').doc(playerId);
         batch.delete(userRef);
         
-        // 활성 플레이어 삭제 (있는 경우)
         const activeRef = db.collection('activePlayers').doc(playerId);
         batch.delete(activeRef);
 
@@ -566,19 +541,16 @@ async function revivePlayer(playerId) {
     if (!confirm('이 플레이어를 부활시키시겠습니까?')) return;
 
     try {
-        // activePlayers 컬렉션에 해당 플레이어가 있는지 확인
         const activePlayerDoc = await db.collection('activePlayers').doc(playerId).get();
         
         if (activePlayerDoc.exists) {
-            // 기존 문서가 있으면 부활시키되 미접속 상태로 설정
             await db.collection('activePlayers').doc(playerId).update({
                 isAlive: true,
-                isActive: false, // 미접속 상태로 설정
+                isActive: false,
                 revivedAt: firebase.firestore.FieldValue.serverTimestamp(),
                 revivedBy: 'admin'
             });
         } else {
-            // 문서가 없으면 새로 생성
             const userDoc = await db.collection('registeredUsers').doc(playerId).get();
             if (userDoc.exists) {
                 const userData = userDoc.data();
@@ -588,7 +560,7 @@ async function revivePlayer(playerId) {
                     role: userData.role,
                     secretCode: userData.secretCode,
                     isAlive: true,
-                    isActive: false, // 부활시키되 미접속 상태
+                    isActive: false,
                     results: [],
                     killCount: 0,
                     money: 0,
@@ -650,7 +622,6 @@ function backToPlayers() {
     });
     document.getElementById('playerManageScreen').classList.add('active');
     
-    // 네비게이션 상태 복원
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
     });
@@ -660,26 +631,24 @@ function backToPlayers() {
 }
 
 // 알림 표시
-function showAlert(message, type = 'success') {
-    // 기존 알림 제거
+function showAlert(message, type) {
+    type = type || 'success';
+    
     const existingAlert = document.querySelector('.alert');
     if (existingAlert) {
         existingAlert.remove();
     }
 
-    // 새 알림 생성
     const alert = document.createElement('div');
-    alert.className = `alert alert-${type}`;
+    alert.className = 'alert alert-' + type;
     alert.textContent = message;
 
-    // 현재 활성 화면의 맨 위에 추가
     const activeScreen = document.querySelector('.screen.active');
     if (activeScreen) {
         activeScreen.insertBefore(alert, activeScreen.firstChild);
     }
 
-    // 3초 후 자동 제거
-    setTimeout(() => {
+    setTimeout(function() {
         if (alert.parentNode) {
             alert.remove();
         }
@@ -688,18 +657,16 @@ function showAlert(message, type = 'success') {
 
 // 실시간 데이터 감지 설정
 function setupRealtimeListeners() {
-    // 게임 상태 실시간 감지
     db.collection('gameSettings').doc('gameStatus')
-        .onSnapshot((doc) => {
+        .onSnapshot(function(doc) {
             if (doc.exists) {
                 const isActive = doc.data().isActive;
                 updateGameStatusUI(isActive);
             }
         });
 
-    // 플레이어 데이터 실시간 감지
     db.collection('activePlayers')
-        .onSnapshot(() => {
+        .onSnapshot(function() {
             if (adminState.currentScreen === 'playerManage') {
                 loadPlayersData();
             }
@@ -713,31 +680,33 @@ function setupRealtimeListeners() {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('관리자 페이지 로드 완료');
 
-    // 로그인 버튼
     document.getElementById('loginBtn').addEventListener('click', adminLogin);
     
-    // Enter 키로 로그인
     document.getElementById('adminPw').addEventListener('keypress', function(e) {
         if (e.key === 'Enter') {
             adminLogin();
         }
     });
 
-    // 네비게이션 버튼들
-    document.getElementById('overviewNavBtn').addEventListener('click', () => showScreen('overview'));
-    document.getElementById('createCodeNavBtn').addEventListener('click', () => showScreen('createCode'));
-    document.getElementById('playerManageNavBtn').addEventListener('click', () => showScreen('playerManage'));
-    document.getElementById('settingsNavBtn').addEventListener('click', () => showScreen('settings'));
+    document.getElementById('overviewNavBtn').addEventListener('click', function() {
+        showScreen('overview');
+    });
+    document.getElementById('createCodeNavBtn').addEventListener('click', function() {
+        showScreen('createCode');
+    });
+    document.getElementById('playerManageNavBtn').addEventListener('click', function() {
+        showScreen('playerManage');
+    });
+    document.getElementById('settingsNavBtn').addEventListener('click', function() {
+        showScreen('settings');
+    });
 
-    // 게임 제어 버튼들
     document.getElementById('startGameBtn').addEventListener('click', startGame);
     document.getElementById('stopGameBtn').addEventListener('click', stopGame);
     document.getElementById('resetGameBtn').addEventListener('click', resetGame);
 
-    // 로그인 코드 생성
     document.getElementById('createCodeBtn').addEventListener('click', createLoginCode);
 
-    // 입력 필드 이벤트
     document.getElementById('newLoginCode').addEventListener('input', function(e) {
         e.target.value = e.target.value.toUpperCase();
     });
@@ -746,15 +715,11 @@ document.addEventListener('DOMContentLoaded', function() {
         e.target.value = e.target.value.toUpperCase();
     });
 
-    // 플레이어 상세에서 돌아가기
     document.getElementById('backToPlayersBtn').addEventListener('click', backToPlayers);
 
-    // 설정 저장
     document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
 
-    // 로그아웃
     document.getElementById('logoutBtn').addEventListener('click', adminLogout);
 
-    // 실시간 리스너 설정
     setupRealtimeListeners();
 });
