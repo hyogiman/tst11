@@ -505,6 +505,14 @@ async function submitCode() {
 
     const now = Date.now();
     
+    // gameState가 초기화되지 않았다면 초기화
+    if (!gameState.interactionCooldowns) {
+        gameState.interactionCooldowns = {};
+    }
+    if (!gameState.mutualInteractions) {
+        gameState.mutualInteractions = {};
+    }
+    
     // 1. 이미 입력한 코드인지 확인
     if (gameState.interactionCooldowns[targetCode] && now < gameState.interactionCooldowns[targetCode]) {
         const remainingTime = Math.ceil((gameState.interactionCooldowns[targetCode] - now) / 1000);
@@ -514,6 +522,11 @@ async function submitCode() {
 
     // 2. 양방향 상호작용 확인 (상대가 나를 입력한 경우)
     const mySecretCode = gameState.secretCode;
+    if (!mySecretCode) {
+        alert('로그인 상태를 확인해주세요.');
+        return;
+    }
+    
     const mutualKey = `${targetCode}_${mySecretCode}`;
     
     if (gameState.mutualInteractions[mutualKey] && now < gameState.mutualInteractions[mutualKey]) {
