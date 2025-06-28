@@ -1,4 +1,29 @@
-function setupRealtimeListener() {
+// 로그인 완료 처리 공통 함수
+async function completeLogin() {
+    document.getElementById('loginLoading').style.display = 'none';
+    
+    // 로그인 화면 숨기기
+    document.getElementById('loginScreen').classList.remove('active');
+    document.getElementById('homeScreen').classList.add('active');
+    
+    // 하단 네비게이션 표시 및 활성화
+    const bottomNav = document.getElementById('bottomNav');
+    bottomNav.style.display = 'flex';
+    
+    // 네비게이션 버튼 활성화
+    document.getElementById('roleNavBtn').classList.remove('disabled');
+    document.getElementById('codeInputNavBtn').classList.remove('disabled');
+    document.getElementById('resultNavBtn').classList.remove('disabled');
+    document.getElementById('logoutNavBtn').style.display = 'flex';
+    
+    // 홈 버튼 활성화
+    document.getElementById('homeNavBtn').classList.add('active');
+    
+    // 상호작용 미션 가져오기
+    await loadInteractionMission();
+    
+    setupRoleCard();
+    setupResultScreen().catch(function setupRealtimeListener() {
     // 기존 리스너가 있다면 해제
     if (gameState.realtimeListener) {
         try {
@@ -234,7 +259,7 @@ async function checkGameStatus() {
     }
 }
 
-// 간편 로그인 함수 (이미 등록된 사용자)
+// 간편 로그인 함수 (이미 등록된 사용자) - 재접속 기능 추가
 async function quickLogin() {
     console.log('간편 로그인 시도');
     
@@ -246,6 +271,7 @@ async function quickLogin() {
     }
     
     const loginCode = document.getElementById('quickLoginCode').value.toUpperCase();
+    const reconnectPassword = document.getElementById('quickLoginPassword').value;
 
     if (!loginCode) {
         alert('로그인 코드를 입력해주세요.');
@@ -274,8 +300,16 @@ async function quickLogin() {
             if (!activeData.isAlive) {
                 throw new Error('게임에서 제거되어 접속할 수 없습니다. 관리자가 부활시킬 때까지 기다려주세요.');
             }
+            
+            // 이미 접속 중인 경우 재접속 비밀번호 확인
             if (activeData.isActive) {
-                throw new Error('이미 접속 중인 코드입니다.');
+                if (!reconnectPassword) {
+                    throw new Error('재접속 비밀번호를 입력해주세요.');
+                }
+                if (userData.reconnectPassword !== reconnectPassword) {
+                    throw new Error('재접속 비밀번호가 올바르지 않습니다.');
+                }
+                console.log('재접속 비밀번호 확인됨 - 재접속 허용');
             }
             
             // 기존 데이터 보존 (결과, 킬카운트, 돈, 상호작용 기록 등)
@@ -293,6 +327,7 @@ async function quickLogin() {
             position: userData.position,
             role: userData.role,
             secretCode: userData.secretCode,
+            reconnectPassword: userData.reconnectPassword,
             isAlive: true,
             isActive: true,
             results: previousData.results || [],
@@ -338,9 +373,15 @@ async function register() {
     const loginCode = document.getElementById('registerCode').value.toUpperCase();
     const playerName = document.getElementById('playerName').value;
     const playerPosition = document.getElementById('playerPosition').value;
+    const reconnectPassword = document.getElementById('reconnectPassword').value;
 
-    if (!loginCode || !playerName || !playerPosition) {
+    if (!loginCode || !playerName || !playerPosition || !reconnectPassword) {
         alert('모든 정보를 입력해주세요.');
+        return;
+    }
+
+    if (reconnectPassword.length < 4) {
+        alert('재접속 비밀번호는 4자리 이상이어야 합니다.');
         return;
     }
 
@@ -367,12 +408,13 @@ async function register() {
             throw new Error('이미 등록된 코드입니다.');
         }
 
-        // 등록된 사용자로 저장 (영구 저장)
+        // 등록된 사용자로 저장 (영구 저장) - 재접속 비밀번호 포함
         const userData = {
             name: playerName,
             position: playerPosition,
             role: codeData.role,
             secretCode: codeData.secretCode,
+            reconnectPassword: reconnectPassword,
             registeredAt: firebase.firestore.FieldValue.serverTimestamp()
         };
 
@@ -528,9 +570,11 @@ async function logout() {
 
         // 모든 입력 필드 초기화
         document.getElementById('quickLoginCode').value = '';
+        document.getElementById('quickLoginPassword').value = '';
         document.getElementById('registerCode').value = '';
         document.getElementById('playerName').value = '';
         document.getElementById('playerPosition').value = '';
+        document.getElementById('reconnectPassword').value = '';
         document.getElementById('targetCode').value = '';
         
         // 폼 상태 초기화 (간편 로그인 폼 표시)
@@ -620,7 +664,7 @@ async function submitCode() {
         return;
     }
 
-    // 2. 상대가 나에게 코드를 입력했는지 확인 (역방향 쿨타임)
+    // 2. 상대가 나에게 코드를 입력했는지 확인 (역방향 쿨타임) - 수정된 부분
     if (gameState.receivedInteractions[targetCode]) {
         const interactionData = gameState.receivedInteractions[targetCode];
         if (interactionData.cooldownUntil && now < interactionData.cooldownUntil) {
@@ -800,8 +844,8 @@ function setupRoleCard() {
         <div class="role-title">${roleInfo.title}</div>
         <div class="role-description">${roleInfo.description}</div>
         <div class="secret-code">
-            <div class="secret-code-label">나의 시크릿 코드</div>
-            <div class="secret-code-value">${gameState.secretCode}</div>
+            <div class="secret-code-label">상호작용 게임 미션</div>
+            <div class="secret-code-value" style="font-size: 1.2em; letter-spacing: normal; line-height: 1.4;">${gameState.interactionMission || '미션 정보를 불러오는 중...'}</div>
         </div>
     `;
 
