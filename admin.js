@@ -61,13 +61,20 @@ function showScreen(screenName) {
     });
     
     // 선택된 화면 표시
-    document.getElementById(screenName + 'Screen').classList.add('active');
+    const targetScreen = document.getElementById(screenName + 'Screen');
+    if (targetScreen) {
+        targetScreen.classList.add('active');
+    }
     
-    // 네비게이션 활성화 상태 변경
+    // 네비게이션 활성화 상태 변경 (해당 버튼이 있는 경우만)
     document.querySelectorAll('.nav-item').forEach(item => {
         item.classList.remove('active');
     });
-    document.getElementById(screenName + 'NavBtn').classList.add('active');
+    
+    const targetNavBtn = document.getElementById(screenName + 'NavBtn');
+    if (targetNavBtn) {
+        targetNavBtn.classList.add('active');
+    }
     
     adminState.currentScreen = screenName;
     
@@ -378,6 +385,7 @@ async function loadPlayersData() {
                 </td>
                 <td>
                     <button class="btn secondary" onclick="showPlayerDetail('${doc.id}')" style="width: auto; padding: 5px 10px; font-size: 12px;">상세</button>
+                    <button class="btn danger" onclick="deletePlayer('${doc.id}')" style="width: auto; padding: 5px 10px; font-size: 12px;">삭제</button>
                     ${!isAlive && isActive ? 
                         `<button class="btn success" onclick="revivePlayer('${doc.id}')" style="width: auto; padding: 5px 10px; font-size: 12px;">부활</button>` : ''
                     }
@@ -485,10 +493,61 @@ async function showPlayerDetail(playerId) {
         }
 
         document.getElementById('playerDetailContent').innerHTML = html;
-        showScreen('playerDetail');
+        
+        // 플레이어 상세 화면으로 전환
+        document.querySelectorAll('.screen').forEach(screen => {
+            screen.classList.remove('active');
+        });
+        document.getElementById('playerDetailScreen').classList.add('active');
 
     } catch (error) {
         console.error('플레이어 상세 정보 로드 오류:', error);
+    }
+}
+
+// 플레이어 삭제
+async function deletePlayer(playerId) {
+    if (!confirm('정말 이 플레이어를 삭제하시겠습니까? 모든 데이터가 영구적으로 삭제됩니다.')) return;
+
+    try {
+        const batch = db.batch();
+        
+        // 등록된 사용자 삭제
+        const userRef = db.collection('registeredUsers').doc(playerId);
+        batch.delete(userRef);
+        
+        // 활성 플레이어 삭제 (있는 경우)
+        const activeRef = db.collection('activePlayers').doc(playerId);
+        batch.delete(activeRef);
+        
+        // 로그인 코드 미사용 상태로 변경
+        const loginCodeQuery = await db.collection('loginCodes').get();
+        loginCodeQuery.forEach(doc => {
+            const data = doc.data();
+            if (data.usedBy && data.used) {
+                // 해당 플레이어가 사용한 로그인 코드를 찾아서 미사용으로 변경
+                const userDoc = db.collection('registeredUsers').doc(playerId);
+                userDoc.get().then(userSnapshot => {
+                    if (userSnapshot.exists && doc.id === playerId) {
+                        batch.update(doc.ref, {
+                            used: false,
+                            usedBy: firebase.firestore.FieldValue.delete(),
+                            usedAt: firebase.firestore.FieldValue.delete()
+                        });
+                    }
+                });
+            }
+        });
+
+        await batch.commit();
+
+        showAlert('플레이어가 삭제되었습니다.', 'success');
+        loadPlayersData();
+        loadOverviewData();
+
+    } catch (error) {
+        console.error('플레이어 삭제 오류:', error);
+        showAlert('플레이어 삭제 중 오류가 발생했습니다.', 'error');
     }
 }
 
@@ -552,7 +611,18 @@ async function saveSettings() {
 
 // 플레이어 목록으로 돌아가기
 function backToPlayers() {
-    showScreen('playerManage');
+    document.querySelectorAll('.screen').forEach(screen => {
+        screen.classList.remove('active');
+    });
+    document.getElementById('playerManageScreen').classList.add('active');
+    
+    // 네비게이션 상태 복원
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    document.getElementById('playerManageNavBtn').classList.add('active');
+    
+    adminState.currentScreen = 'playerManage';
 }
 
 // 알림 표시
