@@ -353,7 +353,46 @@
             100% { transform: rotate(360deg); }
         }
 
-        /* 반응형 */
+        /* 공지사항 스타일 */
+        .notices-section {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 15px;
+            margin-top: 20px;
+        }
+
+        .notices-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+
+        .notice-item {
+            background: white;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 10px;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .notice-title {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 8px;
+            font-size: 1.1em;
+        }
+
+        .notice-content {
+            color: #666;
+            line-height: 1.4;
+            margin-bottom: 8px;
+        }
+
+        .notice-date {
+            font-size: 0.85em;
+            color: #999;
+            text-align: right;
+        }
         @media (max-width: 480px) {
             .container {
                 width: 100%;
@@ -438,8 +477,12 @@
                     <!-- 역할 정보가 동적으로 삽입됩니다 -->
                 </div>
                 
-                <div class="status-message" id="gameStatus">
-                    게임이 진행 중입니다. 다른 플레이어들과 상호작용하며 목표를 달성하세요!
+                <!-- 공지사항 섹션 -->
+                <div class="notices-section">
+                    <h3 style="margin-bottom: 15px; color: #333;">📢 공지사항</h3>
+                    <div id="noticesContainer">
+                        <!-- 공지사항이 동적으로 삽입됩니다 -->
+                    </div>
                 </div>
             </div>
 
@@ -448,13 +491,15 @@
                 <h2 style="margin-bottom: 20px;">내 정보</h2>
                 
                 <div class="code-input-section">
-                    <div class="code-input-title">성명</div>
-                    <div id="myName" style="font-size: 1.2em; font-weight: 600; color: #667eea;">-</div>
-                </div>
-
-                <div class="code-input-section">
-                    <div class="code-input-title">직위</div>
-                    <div id="myPosition" style="font-size: 1.2em; font-weight: 600; color: #667eea;">-</div>
+                    <div class="code-input-title">기본 정보</div>
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
+                        <span style="font-weight: 600;">성명:</span>
+                        <span id="myName" style="color: #667eea;">-</span>
+                    </div>
+                    <div style="display: flex; justify-content: space-between;">
+                        <span style="font-weight: 600;">직위:</span>
+                        <span id="myPosition" style="color: #667eea;">-</span>
+                    </div>
                 </div>
 
                 <div class="code-input-section">
@@ -463,6 +508,13 @@
                     <p style="font-size: 0.9em; color: #666; margin-top: 10px;">
                         상호작용 게임에서 질 경우 상대에게 이 코드를 보여주세요.
                     </p>
+                </div>
+                
+                <div class="code-input-section">
+                    <div class="code-input-title">상호작용 게임 미션</div>
+                    <div id="myMission" style="font-size: 1.1em; line-height: 1.4; color: #333; background: #f8f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #667eea;">
+                        미션 정보를 불러오는 중...
+                    </div>
                 </div>
             </div>
 
