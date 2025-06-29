@@ -89,11 +89,11 @@ function showScreen(screenName) {
         case 'playerManage':
             loadPlayersData();
             break;
-        case 'settings':
-            loadSettingsData();
-            break;
         case 'notices':
             loadNoticesData();
+            break;
+        case 'settings':
+            loadSettingsData();
             break;
     }
 }
@@ -661,6 +661,8 @@ async function deleteNotice(noticeId) {
         showAlert('공지사항 삭제 중 오류가 발생했습니다.', 'error');
     }
 }
+
+// 설정 데이터 로드
 async function loadSettingsData() {
     try {
         const settingsDoc = await db.collection('gameSettings').doc('config').get();
@@ -675,10 +677,7 @@ async function loadSettingsData() {
     }
 }
 
-    // 공지사항 생성
-    document.getElementById('createNoticeBtn').addEventListener('click', createNotice);
-
-    // 설정 저장
+// 설정 저장
 async function saveSettings() {
     try {
         const maxKills = parseInt(document.getElementById('maxKillsSetting').value);
@@ -763,6 +762,7 @@ function setupRealtimeListeners() {
 document.addEventListener('DOMContentLoaded', function() {
     console.log('관리자 페이지 로드 완료');
 
+    // 로그인 관련 이벤트
     document.getElementById('loginBtn').addEventListener('click', adminLogin);
     
     document.getElementById('adminPw').addEventListener('keypress', function(e) {
@@ -771,6 +771,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // 네비게이션 버튼 이벤트 리스너
     document.getElementById('overviewNavBtn').addEventListener('click', function() {
         showScreen('overview');
     });
@@ -780,19 +781,22 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('playerManageNavBtn').addEventListener('click', function() {
         showScreen('playerManage');
     });
-    document.getElementById('settingsNavBtn').addEventListener('click', function() {
-        showScreen('settings');
-    });
     document.getElementById('noticesNavBtn').addEventListener('click', function() {
         showScreen('notices');
     });
+    document.getElementById('settingsNavBtn').addEventListener('click', function() {
+        showScreen('settings');
+    });
 
+    // 게임 제어 버튼 이벤트
     document.getElementById('startGameBtn').addEventListener('click', startGame);
     document.getElementById('stopGameBtn').addEventListener('click', stopGame);
     document.getElementById('resetGameBtn').addEventListener('click', resetGame);
 
+    // 로그인 코드 생성 관련 이벤트
     document.getElementById('createCodeBtn').addEventListener('click', createLoginCode);
 
+    // 입력 필드 자동 대문자 변환
     document.getElementById('newLoginCode').addEventListener('input', function(e) {
         e.target.value = e.target.value.toUpperCase();
     });
@@ -801,11 +805,18 @@ document.addEventListener('DOMContentLoaded', function() {
         e.target.value = e.target.value.toUpperCase();
     });
 
+    // 플레이어 관리 관련 이벤트
     document.getElementById('backToPlayersBtn').addEventListener('click', backToPlayers);
 
+    // 공지사항 관련 이벤트
+    document.getElementById('createNoticeBtn').addEventListener('click', createNotice);
+
+    // 설정 관련 이벤트
     document.getElementById('saveSettingsBtn').addEventListener('click', saveSettings);
 
+    // 로그아웃 이벤트
     document.getElementById('logoutBtn').addEventListener('click', adminLogout);
 
+    // 실시간 리스너 설정
     setupRealtimeListeners();
 });
