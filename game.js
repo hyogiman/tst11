@@ -457,11 +457,11 @@ async function register() {
 async function completeLogin() {
     document.getElementById('loginLoading').style.display = 'none';
     
-    // 헤더 숨기기 및 컨텐츠 전체 높이 설정
+    // 헤더를 compact 모드로 변경 및 컨텐츠 조정
     const header = document.querySelector('.header');
     const content = document.querySelector('.content');
-    header.classList.add('hidden');
-    content.classList.add('full-height');
+    header.classList.add('compact');
+    content.classList.add('compact');
     
     // 로그인 화면 숨기기
     document.getElementById('loginScreen').classList.remove('active');
@@ -493,6 +493,9 @@ async function completeLogin() {
     } catch (error) {
         console.error('결과 화면 설정 오류:', error);
     }
+    
+    // 상호작용 카운트 초기화
+    updateInteractionCount();
     
     setupRealtimeListener();
     
@@ -538,7 +541,16 @@ async function loadNotices() {
     }
 }
 
-async function loadInteractionMission() {
+// 상호작용 카운트 업데이트 함수
+function updateInteractionCount() {
+    if (gameState.isLoggedIn && gameState.usedCodes) {
+        const count = gameState.usedCodes.length;
+        const counterElement = document.getElementById('interactionCount');
+        if (counterElement) {
+            counterElement.textContent = count;
+        }
+    }
+}
     try {
         const loginCodesSnapshot = await db.collection('loginCodes')
             .where('secretCode', '==', gameState.secretCode)
@@ -577,6 +589,126 @@ async function logout() {
         // 실시간 리스너 먼저 해제
         if (gameState.realtimeListener) {
             try {
+                gameState.realtimeListener();
+            } catch (error) {
+                console.error('리스너 해제 오류:', error);
+            }
+            gameState.realtimeListener = null;
+        }
+
+        // Firestore 업데이트 (로그인 상태일 때만)
+        if (gameState.player && gameState.player.loginCode) {
+            await db.collection('activePlayers').doc(gameState.player.loginCode).update({
+                isActive: false,
+                logoutTime: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+
+        // 게임 상태 완전 초기화
+        gameState = {
+            isLoggedIn: false,
+            player: null,
+            role: null,
+            secretCode: null,
+            results: [],
+            isAlive: true,
+            deathTimer: null,
+            usedCodes: [],
+            receivedInteractions: {},
+            realtimeListener: null
+        };
+
+        // 헤더를 원래 상태로 복구 및 컨텐츠 원상복구
+        const header = document.querySelector('.header');
+        const content = document.querySelector('.content');
+        header.classList.remove('compact');
+        content.classList.remove('compact');
+
+        // 모든 화면 숨기고 로그인 화면만 표시
+        document.querySelectorAll('.screen').forEach(function(screen) {
+            screen.classList.remove('active');
+        });
+        document.getElementById('loginScreen').classList.add('active');
+        
+        // 하단 네비게이션 숨기기 및 초기화
+        const bottomNav = document.getElementById('bottomNav');
+        bottomNav.style.display = 'none';
+        
+        // 네비게이션 버튼들 비활성화 및 초기화
+        document.getElementById('homeNavBtn').classList.remove('active');
+        document.getElementById('roleNavBtn').classList.add('disabled');
+        document.getElementById('roleNavBtn').classList.remove('active');
+        document.getElementById('codeInputNavBtn').classList.add('disabled');
+        document.getElementById('codeInputNavBtn').classList.remove('active');
+        document.getElementById('resultNavBtn').classList.add('disabled');
+        document.getElementById('resultNavBtn').classList.remove('active');
+        document.getElementById('logoutNavBtn').style.display = 'none';
+        
+        // 홈 버튼 활성화 (다시 로그인할 때를 위해)
+        document.getElementById('homeNavBtn').classList.add('active');
+
+        // 모든 입력 필드 초기화
+        document.getElementById('quickLoginCode').value = '';
+        if (document.getElementById('quickLoginPassword')) {
+            document.getElementById('quickLoginPassword').value = '';
+        }
+        document.getElementById('registerCode').value = '';
+        document.getElementById('playerName').value = '';
+        document.getElementById('playerPosition').value = '';
+        if (document.getElementById('reconnectPassword')) {
+            document.getElementById('reconnectPassword').value = '';
+        }
+        document.getElementById('targetCode').value = '';
+        
+        // 폼 상태 초기화 (간편 로그인 폼 표시)
+        document.getElementById('registerForm').style.display = 'none';
+        document.getElementById('quickLoginForm').style.display = 'block';
+        
+        // 결과 화면 내용 완전 초기화
+        const codeResult = document.getElementById('codeResult');
+        if (codeResult) codeResult.innerHTML = '';
+        
+        const resultContent = document.getElementById('resultContent');
+        if (resultContent) resultContent.innerHTML = '';
+        
+        const resultTitle = document.getElementById('resultTitle');
+        if (resultTitle) resultTitle.textContent = '내 결과';
+        
+        // 역할 카드 초기화
+        const roleCard = document.getElementById('roleCard');
+        if (roleCard) {
+            roleCard.innerHTML = '';
+            roleCard.className = 'role-card';
+        }
+        
+        // 내 정보 화면 초기화
+        const mySecretCode = document.getElementById('mySecretCode');
+        if (mySecretCode) mySecretCode.textContent = '-';
+        
+        // 새로운 요소들 초기화
+        const myNameElement = document.getElementById('myName');
+        const myPositionElement = document.getElementById('myPosition');
+        
+        if (myNameElement) myNameElement.textContent = '-';
+        if (myPositionElement) myPositionElement.textContent = '-';
+        
+        // 상호작용 카운트 초기화
+        const counterElement = document.getElementById('interactionCount');
+        if (counterElement) counterElement.textContent = '0';
+        
+        // 게임 상태 메시지 초기화
+        const gameStatus = document.getElementById('gameStatus');
+        if (gameStatus) {
+            gameStatus.innerHTML = '<div class="status-message">게임이 진행 중입니다. 다른 플레이어들과 상호작용하며 목표를 달성하세요!</div>';
+        }
+
+        console.log('로그아웃 및 화면 초기화 완료');
+
+    } catch (error) {
+        console.error('로그아웃 오류:', error);
+        alert('로그아웃 중 오류가 발생했습니다.');
+    }
+} {
                 gameState.realtimeListener();
             } catch (error) {
                 console.error('리스너 해제 오류:', error);
@@ -775,6 +907,9 @@ async function submitCode() {
         await db.collection('activePlayers').doc(gameState.player.loginCode).update({
             usedCodes: firebase.firestore.FieldValue.arrayUnion(targetCode)
         });
+        
+        // 상호작용 카운트 업데이트
+        updateInteractionCount();
         
         // 5. 상대방 Firestore에 내가 상호작용했다는 기록 저장
         await recordInteractionToTarget(targetPlayerId, mySecretCode);
