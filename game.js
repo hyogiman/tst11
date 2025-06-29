@@ -457,6 +457,12 @@ async function register() {
 async function completeLogin() {
     document.getElementById('loginLoading').style.display = 'none';
     
+    // 헤더 숨기기 및 컨텐츠 전체 높이 설정
+    const header = document.querySelector('.header');
+    const content = document.querySelector('.content');
+    header.classList.add('hidden');
+    content.classList.add('full-height');
+    
     // 로그인 화면 숨기기
     document.getElementById('loginScreen').classList.remove('active');
     document.getElementById('homeScreen').classList.add('active');
@@ -599,6 +605,12 @@ async function logout() {
             receivedInteractions: {},
             realtimeListener: null
         };
+
+        // 헤더 다시 표시 및 컨텐츠 원상복구
+        const header = document.querySelector('.header');
+        const content = document.querySelector('.content');
+        header.classList.remove('hidden');
+        content.classList.remove('full-height');
 
         // 모든 화면 숨기고 로그인 화면만 표시
         document.querySelectorAll('.screen').forEach(function(screen) {
