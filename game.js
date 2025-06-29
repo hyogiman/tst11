@@ -494,7 +494,7 @@ async function completeLogin() {
         console.error('결과 화면 설정 오류:', error);
     }
     
-    // 상호작용 카운트 초기화
+    // 상호작용 카운트 업데이트 (누적 유지)
     updateInteractionCount();
     
     setupRealtimeListener();
@@ -692,9 +692,7 @@ async function logout() {
         if (myNameElement) myNameElement.textContent = '-';
         if (myPositionElement) myPositionElement.textContent = '-';
         
-        // 상호작용 카운트 초기화
-        const counterElement = document.getElementById('interactionCount');
-        if (counterElement) counterElement.textContent = '0';
+        // 상호작용 카운트는 누적 유지 (초기화하지 않음)
         
         // 게임 상태 메시지 초기화
         const gameStatus = document.getElementById('gameStatus');
