@@ -479,6 +479,9 @@ async function completeLogin() {
     
     setupRoleCard();
     
+    // 공지사항 로드
+    await loadNotices();
+    
     try {
         await setupResultScreen();
     } catch (error) {
@@ -490,7 +493,44 @@ async function completeLogin() {
     console.log('로그인 완료!');
 }
 
-// 상호작용 미션 로드 함수
+// 공지사항 로드 함수
+async function loadNotices() {
+    try {
+        const noticesSnapshot = await db.collection('notices')
+            .orderBy('createdAt', 'desc')
+            .limit(10)
+            .get();
+        
+        const noticesContainer = document.getElementById('noticesContainer');
+        
+        if (noticesSnapshot.empty) {
+            noticesContainer.innerHTML = '<p style="text-align: center; color: #666;">등록된 공지사항이 없습니다.</p>';
+            return;
+        }
+
+        let html = '<div class="notices-list">';
+        noticesSnapshot.forEach(function(doc) {
+            const notice = doc.data();
+            const date = notice.createdAt ? notice.createdAt.toDate().toLocaleDateString('ko-KR') : '날짜 없음';
+            
+            html += '<div class="notice-item">' +
+                    '<div class="notice-title">' + notice.title + '</div>' +
+                    '<div class="notice-content">' + notice.content + '</div>' +
+                    '<div class="notice-date">' + date + '</div>' +
+                    '</div>';
+        });
+        html += '</div>';
+        
+        noticesContainer.innerHTML = html;
+        
+    } catch (error) {
+        console.error('공지사항 로드 오류:', error);
+        const noticesContainer = document.getElementById('noticesContainer');
+        if (noticesContainer) {
+            noticesContainer.innerHTML = '<p style="text-align: center; color: #666;">공지사항을 불러올 수 없습니다.</p>';
+        }
+    }
+}
 async function loadInteractionMission() {
     try {
         const loginCodesSnapshot = await db.collection('loginCodes')
@@ -806,8 +846,8 @@ async function processSecretCode(targetPlayer, targetPlayerId) {
                     // 탐정과 거래: 90~150원
                     result.amount = Math.floor(Math.random() * 61) + 90;
                 } else if (targetPlayer.role === 'criminal') {
-                    // 범인과 거래: 140~250원
-                    result.amount = Math.floor(Math.random() * 51) + 140;
+                    // 범인과 거래: 200~250원
+                    result.amount = Math.floor(Math.random() * 51) + 200;
                 }
                 result.title = '거래 성공';
                 result.content = result.amount + '원을 획득했습니다.';
@@ -861,22 +901,18 @@ function setupRoleCard() {
     
     roleCard.className = 'role-card ' + roleInfo.className;
     roleCard.innerHTML = '<div class="role-title">' + roleInfo.title + '</div>' +
-                        '<div class="role-description">' + roleInfo.description + '</div>' +
-                        '<div class="secret-code">' +
-                        '<div class="secret-code-label">상호작용 게임 미션</div>' +
-                        '<div class="secret-code-value" style="font-size: 1.2em; letter-spacing: normal; line-height: 1.4;">' + 
-                        (gameState.interactionMission || '미션 정보를 불러오는 중...') + '</div>' +
-                        '</div>';
+                        '<div class="role-description">' + roleInfo.description + '</div>';
 
-    // 역할/S.C 화면의 내 정보 설정 (역할 제거, 성명/직위 추가)
+    // 역할/S.C 화면의 내 정보 설정
     document.getElementById('mySecretCode').textContent = gameState.secretCode;
+    document.getElementById('myName').textContent = gameState.player.name;
+    document.getElementById('myPosition').textContent = gameState.player.position;
     
-    // 새로운 요소들 추가 (HTML에서 myRole을 myName과 myPosition으로 변경 필요)
-    const myNameElement = document.getElementById('myName');
-    const myPositionElement = document.getElementById('myPosition');
-    
-    if (myNameElement) myNameElement.textContent = gameState.player.name;
-    if (myPositionElement) myPositionElement.textContent = gameState.player.position;
+    // 상호작용 미션 설정
+    const missionElement = document.getElementById('myMission');
+    if (missionElement) {
+        missionElement.textContent = gameState.interactionMission || '미션 정보를 불러오는 중...';
+    }
 }
 
 async function setupResultScreen() {
