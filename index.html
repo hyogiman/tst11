@@ -44,6 +44,11 @@
             top: 0;
             z-index: 100;
             box-shadow: 0 4px 20px rgba(102, 126, 234, 0.3);
+            transition: all 0.3s ease;
+        }
+
+        .header.hidden {
+            display: none;
         }
 
         .header h1 {
@@ -64,6 +69,11 @@
         .content {
             padding: 24px;
             padding-bottom: 120px;
+        }
+
+        .content.full-height {
+            padding-top: 32px;
+            min-height: calc(100vh - 80px);
         }
 
         .screen {
