@@ -73,7 +73,7 @@ function setupRealtimeListener() {
                             results: [],
                             isAlive: true,
                             deathTimer: null,
-                            interactionCooldowns: {},
+                            usedCodes: [],
                             receivedInteractions: {},
                             realtimeListener: null
                         };
@@ -171,8 +171,8 @@ let gameState = {
     results: [],
     isAlive: true,
     deathTimer: null,
-    interactionCooldowns: {},
-    receivedInteractions: {},
+    usedCodes: [], // 내가 이미 입력한 시크릿 코드 목록
+    receivedInteractions: {}, // 내가 상대에게 코드를 입력당한 기록
     realtimeListener: null
 };
 
@@ -296,6 +296,7 @@ async function quickLogin() {
                 results: activeData.results || [],
                 killCount: activeData.killCount || 0,
                 money: activeData.money || 0,
+                usedCodes: activeData.usedCodes || [], // 사용된 코드 목록도 보존
                 receivedInteractions: activeData.receivedInteractions || {}
             };
         }
@@ -312,6 +313,7 @@ async function quickLogin() {
             results: previousData.results || [],
             killCount: previousData.killCount || 0,
             money: previousData.money || 0,
+            usedCodes: previousData.usedCodes || [], // 사용된 코드 목록 보존
             receivedInteractions: previousData.receivedInteractions || {},
             loginTime: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -325,6 +327,7 @@ async function quickLogin() {
         gameState.role = userData.role;
         gameState.secretCode = userData.secretCode;
         gameState.isLoggedIn = true;
+        gameState.usedCodes = previousData.usedCodes || []; // 사용된 코드 목록 복원
         gameState.receivedInteractions = previousData.receivedInteractions || {};
 
         setTimeout(function() {
@@ -411,6 +414,7 @@ async function register() {
             results: [],
             killCount: 0,
             money: 0,
+            usedCodes: [], // 사용된 코드 목록 초기화
             receivedInteractions: {},
             loginTime: firebase.firestore.FieldValue.serverTimestamp()
         });
@@ -550,7 +554,7 @@ async function logout() {
             results: [],
             isAlive: true,
             deathTimer: null,
-            interactionCooldowns: {},
+            usedCodes: [],
             receivedInteractions: {},
             realtimeListener: null
         };
@@ -654,27 +658,20 @@ async function submitCode() {
     const mySecretCode = gameState.secretCode;
     
     // gameState 객체들 초기화 확인
-    if (!gameState.interactionCooldowns) {
-        gameState.interactionCooldowns = {};
+    if (!gameState.usedCodes) {
+        gameState.usedCodes = [];
     }
     if (!gameState.receivedInteractions) {
         gameState.receivedInteractions = {};
     }
     
-    // 1. 내가 이미 입력한 코드인지 확인 (재입력 방지)
-    if (gameState.interactionCooldowns[targetCode] && now < gameState.interactionCooldowns[targetCode]) {
-        const remainingTime = Math.ceil((gameState.interactionCooldowns[targetCode] - now) / 1000);
-        
-        // 남은 시간이 100000초 이상이면 영구차단 메시지
-        if (remainingTime > 100000) {
-            alert('한번 입력한 코드는 다시 입력할 수 없습니다.');
-        } else {
-            alert('이 플레이어와는 ' + remainingTime + '초 후에 다시 상호작용할 수 있습니다.');
-        }
+    // 1. 내가 이미 입력한 코드인지 확인 (영구 차단)
+    if (gameState.usedCodes.includes(targetCode)) {
+        alert('한번 입력한 코드는 다시 입력할 수 없습니다.');
         return;
     }
 
-    // 2. 상대가 나에게 코드를 입력했는지 확인 (역방향 쿨타임) - 수정된 부분
+    // 2. 상대가 나에게 코드를 입력했는지 확인 (역방향 쿨타임)
     if (gameState.receivedInteractions[targetCode]) {
         const interactionData = gameState.receivedInteractions[targetCode];
         if (interactionData.cooldownUntil && now < interactionData.cooldownUntil) {
@@ -718,10 +715,15 @@ async function submitCode() {
         // 상호작용 처리
         const result = await processSecretCode(targetPlayer, targetPlayerId);
         
-        // 3. 내가 상대 코드를 입력한 쿨다운 설정 (영구 차단)
-        gameState.interactionCooldowns[targetCode] = Number.MAX_SAFE_INTEGER;
+        // 3. 내가 입력한 코드를 사용된 코드 목록에 추가 (영구 차단)
+        gameState.usedCodes.push(targetCode);
         
-        // 4. 상대방 Firestore에 내가 상호작용했다는 기록 저장
+        // 4. Firestore에도 사용된 코드 목록 업데이트
+        await db.collection('activePlayers').doc(gameState.player.loginCode).update({
+            usedCodes: firebase.firestore.FieldValue.arrayUnion(targetCode)
+        });
+        
+        // 5. 상대방 Firestore에 내가 상호작용했다는 기록 저장
         await recordInteractionToTarget(targetPlayerId, mySecretCode);
         
         setTimeout(function() {
