@@ -86,11 +86,9 @@ function setupRealtimeListener() {
                 // 결과 업데이트
                 if (data.results && data.results.length !== gameState.results.length) {
                     gameState.results = data.results;
-                    try {
-                        setupResultScreen();
-                    } catch (error) {
+                    setupResultScreen().catch(function(error) {
                         console.error('실시간 결과 업데이트 오류:', error);
-                    }
+                    });
                 }
             } else {
                 // 문서가 삭제된 경우
@@ -152,11 +150,9 @@ function showScreen(screenName) {
     
     // 결과 화면일 때만 데이터 로드
     if (screenName === 'result' && gameState.isLoggedIn) {
-        try {
-            setupResultScreen();
-        } catch (error) {
+        setupResultScreen().catch(function(error) {
             console.error('결과 화면 설정 오류:', error);
-        }
+        });
     }
     
     return true;
@@ -488,11 +484,9 @@ async function completeLogin() {
     // 공지사항 로드
     await loadNotices();
     
-    try {
-        await setupResultScreen();
-    } catch (error) {
+    setupResultScreen().catch(function(error) {
         console.error('결과 화면 설정 오류:', error);
-    }
+    });
     
     // 상호작용 카운트 업데이트 (누적 유지)
     updateInteractionCount();
@@ -916,11 +910,9 @@ async function submitCode() {
             document.getElementById('codeLoading').style.display = 'none';
             displayCodeResult(result);
             document.getElementById('targetCode').value = '';
-            try {
-                setupResultScreen();
-            } catch (error) {
+            setupResultScreen().catch(function(error) {
                 console.error('결과 화면 업데이트 오류:', error);
-            }
+            });
         }, 1000);
 
     } catch (error) {
@@ -1274,11 +1266,9 @@ async function executeKill(killIndex) {
         }, killTimer * 1000);
 
         alert('제거 명령이 실행되었습니다. ' + timeText + ' 후 대상이 게임에서 제외됩니다.');
-        try {
-            setupResultScreen();
-        } catch (error) {
+        setupResultScreen().catch(function(error) {
             console.error('결과 화면 새로고침 오류:', error);
-        }
+        });
 
     } catch (error) {
         console.error('공격 실행 오류:', error);
