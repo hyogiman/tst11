@@ -240,7 +240,7 @@ async function checkGameStatus() {
 async function quickLogin() {
     console.log('간편 로그인 시도');
     
-    // 게임 상태 확인
+    // 게임 상태 확인 (로그인만 체크)
     const isGameActive = await checkGameStatus();
     if (!isGameActive) {
         alert('게임이 아직 시작되지 않았습니다. 관리자가 게임을 시작할 때까지 기다려주세요.');
@@ -339,17 +339,11 @@ async function quickLogin() {
     }
 }
 
-// 등록 함수 (처음 사용자)
+// 등록 함수 (처음 사용자) - 게임 시작 여부 관계없이 등록 가능
 async function register() {
     console.log('등록 시도');
     
-    // 게임 상태 확인
-    const isGameActive = await checkGameStatus();
-    if (!isGameActive) {
-        alert('게임이 아직 시작되지 않았습니다. 관리자가 게임을 시작할 때까지 기다려주세요.');
-        return;
-    }
-    
+    // 등록은 게임 시작 여부와 관계없이 항상 가능
     const loginCode = document.getElementById('registerCode').value.toUpperCase();
     const playerName = document.getElementById('playerName').value;
     const playerPosition = document.getElementById('playerPosition').value;
@@ -400,22 +394,27 @@ async function register() {
 
         await db.collection('registeredUsers').doc(loginCode).set(userData);
 
-        // 활성 플레이어로도 등록
-        await db.collection('activePlayers').doc(loginCode).set({
-            name: userData.name,
-            position: userData.position,
-            role: userData.role,
-            secretCode: userData.secretCode,
-            reconnectPassword: userData.reconnectPassword,
-            isAlive: true,
-            isActive: true,
-            results: [],
-            killCount: 0,
-            money: 0,
-            usedCodes: [], // 사용된 코드 목록 초기화
-            receivedInteractions: {},
-            loginTime: firebase.firestore.FieldValue.serverTimestamp()
-        });
+        // 게임 시작 여부 확인
+        const isGameActive = await checkGameStatus();
+        
+        if (isGameActive) {
+            // 게임이 시작된 경우에만 활성 플레이어로 등록
+            await db.collection('activePlayers').doc(loginCode).set({
+                name: userData.name,
+                position: userData.position,
+                role: userData.role,
+                secretCode: userData.secretCode,
+                reconnectPassword: userData.reconnectPassword,
+                isAlive: true,
+                isActive: true,
+                results: [],
+                killCount: 0,
+                money: 0,
+                usedCodes: [], // 사용된 코드 목록 초기화
+                receivedInteractions: {},
+                loginTime: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
 
         // 로그인 코드 사용 표시
         await db.collection('loginCodes').doc(loginCode).update({
@@ -434,9 +433,37 @@ async function register() {
         gameState.secretCode = codeData.secretCode;
         gameState.isLoggedIn = true;
 
-        setTimeout(function() {
-            completeLogin();
-        }, 1000);
+        document.getElementById('loginLoading').style.display = 'none';
+        
+        if (isGameActive) {
+            // 게임이 시작된 경우 바로 로그인
+            setTimeout(function() {
+                completeLogin();
+            }, 1000);
+        } else {
+            // 게임이 시작되지 않은 경우 대기 메시지
+            alert('등록이 완료되었습니다! 관리자가 게임을 시작할 때까지 기다려주세요. 게임 시작 후 다시 로그인해주세요.');
+            
+            // 폼 초기화
+            document.getElementById('registerCode').value = '';
+            document.getElementById('playerName').value = '';
+            document.getElementById('playerPosition').value = '';
+            document.getElementById('reconnectPassword').value = '';
+            
+            // 게임 상태 초기화
+            gameState = {
+                isLoggedIn: false,
+                player: null,
+                role: null,
+                secretCode: null,
+                results: [],
+                isAlive: true,
+                deathTimer: null,
+                usedCodes: [],
+                receivedInteractions: {},
+                realtimeListener: null
+            };
+        }
 
     } catch (error) {
         document.getElementById('loginLoading').style.display = 'none';
