@@ -493,6 +493,34 @@
             <button class="btn secondary" id="backToPlayersBtn">목록으로 돌아가기</button>
         </div>
 
+        <!-- 공지사항 관리 화면 -->
+        <div class="screen" id="noticesScreen">
+            <h2 style="margin-bottom: 20px;">공지사항 관리</h2>
+            
+            <div class="card">
+                <h3>새 공지사항 등록</h3>
+                
+                <div class="form-group">
+                    <label for="newNoticeTitle">공지사항 제목</label>
+                    <input type="text" id="newNoticeTitle" placeholder="공지사항 제목을 입력하세요">
+                </div>
+                
+                <div class="form-group">
+                    <label for="newNoticeContent">공지사항 내용</label>
+                    <textarea id="newNoticeContent" placeholder="공지사항 내용을 입력하세요" rows="4"></textarea>
+                </div>
+                
+                <button class="btn" id="createNoticeBtn">공지사항 등록</button>
+            </div>
+
+            <div class="card">
+                <h3>등록된 공지사항 목록</h3>
+                <div id="noticesListAdmin">
+                    <!-- 공지사항 목록이 여기에 표시됩니다 -->
+                </div>
+            </div>
+        </div>
+
         <!-- 설정 화면 -->
         <div class="screen" id="settingsScreen">
             <h2 style="margin-bottom: 20px;">게임 설정</h2>
@@ -533,6 +561,10 @@
             <button class="nav-item" id="settingsNavBtn">
                 <span class="nav-icon">⚙️</span>
                 설정
+            </button>
+            <button class="nav-item" id="noticesNavBtn">
+                <span class="nav-icon">📢</span>
+                공지사항
             </button>
         </div>
     </div>
