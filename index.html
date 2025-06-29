@@ -51,6 +51,12 @@
             display: none;
         }
 
+        .header.compact {
+            padding: 12px 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            box-shadow: 0 2px 10px rgba(102, 126, 234, 0.2);
+        }
+
         .header h1 {
             font-size: 2em;
             font-weight: 700;
@@ -65,15 +71,53 @@
             letter-spacing: 0.5px;
         }
 
-        /* 콘텐츠 */
-        .content {
-            padding: 24px;
-            padding-bottom: 120px;
+        /* 상호작용 카운터 */
+        .interaction-counter {
+            display: none;
+            font-size: 0.9em;
+            font-weight: 500;
+            opacity: 0.9;
+            letter-spacing: 0.3px;
         }
 
-        .content.full-height {
-            padding-top: 32px;
-            min-height: calc(100vh - 80px);
+        .header.compact .interaction-counter {
+            display: block;
+        }
+
+        .header.compact h1,
+        .header.compact .subtitle {
+            display: none;
+        }
+
+        /* 콘텐츠 */
+        .content {
+            padding: 20px;
+            padding-bottom: 100px;
+            max-height: calc(100vh - 140px);
+            overflow-y: auto;
+        }
+
+        .content.compact {
+            max-height: calc(100vh - 100px);
+            padding: 16px;
+        }
+
+        /* 스크롤바 스타일링 */
+        .content::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .content::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .content::-webkit-scrollbar-thumb {
+            background: rgba(102, 126, 234, 0.3);
+            border-radius: 2px;
+        }
+
+        .content::-webkit-scrollbar-thumb:hover {
+            background: rgba(102, 126, 234, 0.5);
         }
 
         .screen {
@@ -174,42 +218,42 @@
         .role-card {
             background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
             color: white;
-            padding: 32px 24px;
-            border-radius: 20px;
+            padding: 24px 20px;
+            border-radius: 16px;
             text-align: center;
-            margin: 24px 0;
-            box-shadow: 0 20px 40px rgba(240, 147, 251, 0.3);
+            margin: 16px 0;
+            box-shadow: 0 15px 30px rgba(240, 147, 251, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.2);
             backdrop-filter: blur(10px);
         }
 
         .role-card.detective {
             background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
-            box-shadow: 0 20px 40px rgba(79, 172, 254, 0.3);
+            box-shadow: 0 15px 30px rgba(79, 172, 254, 0.3);
         }
 
         .role-card.criminal {
             background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
-            box-shadow: 0 20px 40px rgba(250, 112, 154, 0.3);
+            box-shadow: 0 15px 30px rgba(250, 112, 154, 0.3);
         }
 
         .role-card.merchant {
             background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%);
             color: #1a202c;
-            box-shadow: 0 20px 40px rgba(168, 237, 234, 0.3);
+            box-shadow: 0 15px 30px rgba(168, 237, 234, 0.3);
         }
 
         .role-title {
-            font-size: 2.2em;
-            margin-bottom: 12px;
+            font-size: 1.8em;
+            margin-bottom: 8px;
             font-weight: 700;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .role-description {
-            font-size: 1.1em;
-            line-height: 1.6;
-            margin-bottom: 16px;
+            font-size: 1em;
+            line-height: 1.5;
+            margin-bottom: 12px;
             font-weight: 400;
             opacity: 0.95;
         }
@@ -217,17 +261,17 @@
         /* 코드 입력 화면 */
         .code-input-section {
             background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-            padding: 24px;
-            border-radius: 16px;
-            margin-bottom: 24px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+            padding: 20px;
+            border-radius: 14px;
+            margin-bottom: 16px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
             border: 1px solid rgba(255, 255, 255, 0.8);
         }
 
         .code-input-title {
-            font-size: 1.4em;
+            font-size: 1.2em;
             font-weight: 600;
-            margin-bottom: 16px;
+            margin-bottom: 12px;
             color: #1f2937;
             letter-spacing: -0.025em;
         }
@@ -235,14 +279,14 @@
         /* 기본 정보 스타일 */
         .basic-info {
             text-align: center;
-            font-size: 1.3em;
+            font-size: 1.2em;
             color: #667eea;
             font-weight: 600;
-            margin-bottom: 24px;
-            padding: 20px 24px;
+            margin-bottom: 16px;
+            padding: 16px 20px;
             background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-            border-radius: 16px;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.1);
+            border-radius: 14px;
+            box-shadow: 0 3px 10px rgba(102, 126, 234, 0.1);
             border: 1px solid rgba(102, 126, 234, 0.1);
         }
 
@@ -441,22 +485,22 @@
         /* 공지사항 스타일 */
         .notices-section {
             background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-            padding: 24px;
-            border-radius: 16px;
-            margin-top: 24px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+            padding: 20px;
+            border-radius: 14px;
+            margin-top: 16px;
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
             border: 1px solid rgba(255, 255, 255, 0.8);
         }
 
         .notices-section h3 {
             font-weight: 600;
             color: #1f2937;
-            margin-bottom: 16px;
-            font-size: 1.2em;
+            margin-bottom: 12px;
+            font-size: 1.1em;
         }
 
         .notices-list {
-            max-height: 320px;
+            max-height: 250px;
             overflow-y: auto;
             scrollbar-width: thin;
             scrollbar-color: #d1d5db transparent;
@@ -575,6 +619,9 @@
         <div class="header">
             <h1>🕵️ 추리 게임</h1>
             <p class="subtitle">탐정, 범인, 상인의 심리전</p>
+            <div class="interaction-counter" id="interactionCounter">
+                상호작용한 플레이어: <span id="interactionCount">0</span>명
+            </div>
         </div>
 
         <div class="content">
