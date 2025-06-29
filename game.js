@@ -28,6 +28,8 @@ function setupRealtimeListener() {
                 // receivedInteractions 데이터 동기화
                 if (data.receivedInteractions) {
                     gameState.receivedInteractions = data.receivedInteractions;
+                    // 상대가 나에게 상호작용했을 때도 카운터 업데이트
+                    updateInteractionCount();
                 }
                 
                 // 사망하거나 비활성화된 경우 강제 로그아웃 (관리자나 범인에 의한 제거)
@@ -498,11 +500,19 @@ async function completeLogin() {
 
 // 상호작용 카운트 업데이트 함수
 function updateInteractionCount() {
-    if (gameState.isLoggedIn && gameState.usedCodes) {
-        const count = gameState.usedCodes.length;
+    if (gameState.isLoggedIn) {
+        // 내가 입력한 코드 수
+        const myInputCount = gameState.usedCodes ? gameState.usedCodes.length : 0;
+        
+        // 상대가 나에게 입력한 코드 수
+        const receivedCount = gameState.receivedInteractions ? Object.keys(gameState.receivedInteractions).length : 0;
+        
+        // 전체 상호작용 수 (중복 제거 필요 없음 - 양방향 모두 카운트)
+        const totalCount = myInputCount + receivedCount;
+        
         const counterElement = document.getElementById('interactionCount');
         if (counterElement) {
-            counterElement.textContent = count;
+            counterElement.textContent = totalCount;
         }
     }
 }
