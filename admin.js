@@ -9,7 +9,7 @@ async function adminLogin() {
     const adminId = document.getElementById('adminId').value;
     const adminPw = document.getElementById('adminPw').value;
 
-    if (adminId === 'admin' && adminPw === 'admin') {
+    if (adminId === 'admin' && adminPw === 'dlsgur12!@') {
         adminState.isLoggedIn = true;
         showDashboard();
         loadDashboardData();
