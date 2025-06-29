@@ -326,8 +326,8 @@ async function quickLogin() {
         gameState.usedCodes = previousData.usedCodes || []; // 사용된 코드 목록 복원
         gameState.receivedInteractions = previousData.receivedInteractions || {};
 
-        setTimeout(function() {
-            completeLogin();
+        setTimeout(async function() {
+            await completeLogin();
         }, 1000);
 
     } catch (error) {
@@ -432,8 +432,8 @@ async function register() {
         gameState.secretCode = codeData.secretCode;
         gameState.isLoggedIn = true;
 
-        setTimeout(function() {
-            completeLogin();
+        setTimeout(async function() {
+            await completeLogin();
         }, 1000);
 
     } catch (error) {
