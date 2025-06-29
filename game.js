@@ -531,6 +531,7 @@ async function loadNotices() {
         }
     }
 }
+
 async function loadInteractionMission() {
     try {
         const loginCodesSnapshot = await db.collection('loginCodes')
@@ -903,10 +904,10 @@ function setupRoleCard() {
     roleCard.innerHTML = '<div class="role-title">' + roleInfo.title + '</div>' +
                         '<div class="role-description">' + roleInfo.description + '</div>';
 
-    // 역할/S.C 화면의 내 정보 설정
-    document.getElementById('mySecretCode').textContent = gameState.secretCode;
+    // 역할/S.C 화면의 내 정보 설정 - 한 줄로 표시
     document.getElementById('myName').textContent = gameState.player.name;
     document.getElementById('myPosition').textContent = gameState.player.position;
+    document.getElementById('mySecretCode').textContent = gameState.secretCode;
     
     // 상호작용 미션 설정
     const missionElement = document.getElementById('myMission');
