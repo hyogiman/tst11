@@ -349,6 +349,7 @@ async function quickLogin() {
         gameState.receivedInteractions = previousData.receivedInteractions || {};
 
         setTimeout(() => {
+            document.getElementById('codeLoading').style.display = 'none';
             completeLogin();
         }, 1000);
 
@@ -719,12 +720,13 @@ async function submitCode() {
         await recordInteractionToTarget(targetPlayerId, mySecretCode);
         
         setTimeout(() => {
-            document.getElementById('codeLoading').style.display = 'none';
             displayCodeResult(result);
             document.getElementById('targetCode').value = '';
-            setupResultScreen().catch(error => {
+            try {
+                setupResultScreen();
+            } catch (error) {
                 console.error('결과 화면 업데이트 오류:', error);
-            });
+            }
         }, 1000);
 
     } catch (error) {
@@ -1087,9 +1089,11 @@ async function executeKill(killIndex) {
         }, killTimer * 1000);
 
         alert(`제거 명령이 실행되었습니다. ${timeText} 후 대상이 게임에서 제외됩니다.`);
-        setupResultScreen().catch(error => {
+        try {
+            setupResultScreen();
+        } catch (error) {
             console.error('결과 화면 새로고침 오류:', error);
-        });
+        }
 
     } catch (error) {
         console.error('공격 실행 오류:', error);
