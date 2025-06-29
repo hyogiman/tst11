@@ -806,8 +806,8 @@ async function processSecretCode(targetPlayer, targetPlayerId) {
                     // 탐정과 거래: 90~150원
                     result.amount = Math.floor(Math.random() * 61) + 90;
                 } else if (targetPlayer.role === 'criminal') {
-                    // 범인과 거래: 200~250원
-                    result.amount = Math.floor(Math.random() * 51) + 200;
+                    // 범인과 거래: 140~250원
+                    result.amount = Math.floor(Math.random() * 51) + 140;
                 }
                 result.title = '거래 성공';
                 result.content = result.amount + '원을 획득했습니다.';
