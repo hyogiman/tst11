@@ -798,10 +798,16 @@ async function processSecretCode(targetPlayer, targetPlayerId) {
 
             case 'merchant':
                 result.type = 'money';
+                // 역할별 차등 거래 금액
                 if (targetPlayer.role === 'merchant') {
-                    result.amount = Math.floor(Math.random() * 100) + 1;
-                } else {
-                    result.amount = Math.floor(Math.random() * 100) + 50;
+                    // 상인끼리: 50~100원
+                    result.amount = Math.floor(Math.random() * 51) + 50;
+                } else if (targetPlayer.role === 'detective') {
+                    // 탐정과 거래: 90~150원
+                    result.amount = Math.floor(Math.random() * 61) + 90;
+                } else if (targetPlayer.role === 'criminal') {
+                    // 범인과 거래: 200~250원
+                    result.amount = Math.floor(Math.random() * 51) + 200;
                 }
                 result.title = '거래 성공';
                 result.content = result.amount + '원을 획득했습니다.';
