@@ -92,6 +92,9 @@ function showScreen(screenName) {
         case 'settings':
             loadSettingsData();
             break;
+        case 'notices':
+            loadNoticesData();
+            break;
     }
 }
 
@@ -584,7 +587,80 @@ async function revivePlayer(playerId) {
     }
 }
 
-// 설정 데이터 로드
+// 공지사항 생성
+async function createNotice() {
+    const title = document.getElementById('newNoticeTitle').value;
+    const content = document.getElementById('newNoticeContent').value;
+
+    if (!title || !content) {
+        alert('제목과 내용을 모두 입력해주세요.');
+        return;
+    }
+
+    try {
+        await db.collection('notices').add({
+            title: title,
+            content: content,
+            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+            createdBy: 'admin'
+        });
+
+        document.getElementById('newNoticeTitle').value = '';
+        document.getElementById('newNoticeContent').value = '';
+
+        showAlert('공지사항이 등록되었습니다.', 'success');
+        loadNoticesData();
+    } catch (error) {
+        console.error('공지사항 생성 오류:', error);
+        showAlert('공지사항 등록 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 공지사항 목록 로드
+async function loadNoticesData() {
+    try {
+        const noticesSnapshot = await db.collection('notices').orderBy('createdAt', 'desc').get();
+        const container = document.getElementById('noticesListAdmin');
+        
+        if (noticesSnapshot.empty) {
+            container.innerHTML = '<p style="text-align: center; color: #666;">등록된 공지사항이 없습니다.</p>';
+            return;
+        }
+
+        let html = '';
+        noticesSnapshot.forEach(function(doc) {
+            const data = doc.data();
+            const date = data.createdAt ? data.createdAt.toDate().toLocaleDateString('ko-KR') : '날짜 없음';
+
+            html += '<div class="list-item">';
+            html += '<div class="list-item-header">';
+            html += '<div class="list-item-title">' + data.title + '</div>';
+            html += '<button class="btn danger" onclick="deleteNotice(\'' + doc.id + '\')" style="width: auto; padding: 5px 10px; font-size: 12px;">삭제</button>';
+            html += '</div>';
+            html += '<div class="list-item-subtitle">등록일: ' + date + '</div>';
+            html += '<div style="margin-top: 8px; font-size: 14px; color: #555;">' + data.content + '</div>';
+            html += '</div>';
+        });
+
+        container.innerHTML = html;
+    } catch (error) {
+        console.error('공지사항 목록 로드 오류:', error);
+    }
+}
+
+// 공지사항 삭제
+async function deleteNotice(noticeId) {
+    if (!confirm('정말 이 공지사항을 삭제하시겠습니까?')) return;
+
+    try {
+        await db.collection('notices').doc(noticeId).delete();
+        showAlert('공지사항이 삭제되었습니다.', 'success');
+        loadNoticesData();
+    } catch (error) {
+        console.error('공지사항 삭제 오류:', error);
+        showAlert('공지사항 삭제 중 오류가 발생했습니다.', 'error');
+    }
+}
 async function loadSettingsData() {
     try {
         const settingsDoc = await db.collection('gameSettings').doc('config').get();
@@ -599,7 +675,10 @@ async function loadSettingsData() {
     }
 }
 
-// 설정 저장
+    // 공지사항 생성
+    document.getElementById('createNoticeBtn').addEventListener('click', createNotice);
+
+    // 설정 저장
 async function saveSettings() {
     try {
         const maxKills = parseInt(document.getElementById('maxKillsSetting').value);
@@ -703,6 +782,9 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     document.getElementById('settingsNavBtn').addEventListener('click', function() {
         showScreen('settings');
+    });
+    document.getElementById('noticesNavBtn').addEventListener('click', function() {
+        showScreen('notices');
     });
 
     document.getElementById('startGameBtn').addEventListener('click', startGame);
