@@ -14,7 +14,7 @@ function setupRealtimeListener() {
         return;
     }
 
-    // 새 리스너 설정
+    // activePlayers 리스너 설정
     gameState.realtimeListener = db.collection('activePlayers').doc(gameState.player.loginCode)
         .onSnapshot(function(doc) {
             // 로그아웃 상태이면 리스너 실행 안 함
@@ -30,6 +30,31 @@ function setupRealtimeListener() {
                     gameState.receivedInteractions = data.receivedInteractions;
                     // 상대가 나에게 상호작용했을 때도 카운터 업데이트
                     updateInteractionCount();
+                }
+                
+                // 역할이나 시크릿 코드가 변경된 경우 게임 상태 업데이트
+                if (data.role !== gameState.role || data.secretCode !== gameState.secretCode) {
+                    console.log('관리자에 의해 역할/시크릿 코드가 변경되었습니다.');
+                    
+                    // 게임 상태 업데이트
+                    gameState.role = data.role;
+                    gameState.secretCode = data.secretCode;
+                    
+                    // 역할 카드 다시 설정
+                    setupRoleCard();
+                    
+                    // 상호작용 미션 다시 로드
+                    loadInteractionMission().then(function() {
+                        setupRoleCard(); // 미션 로드 후 다시 역할 카드 설정
+                    });
+                    
+                    // 결과 화면도 업데이트
+                    setupResultScreen().catch(function(error) {
+                        console.error('결과 화면 업데이트 오류:', error);
+                    });
+                    
+                    // 사용자에게 알림
+                    alert('관리자가 당신의 역할 정보를 업데이트했습니다. 새로운 정보를 확인해주세요!');
                 }
                 
                 // 사망하거나 비활성화된 경우 강제 로그아웃 (관리자나 범인에 의한 제거)
