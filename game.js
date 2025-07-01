@@ -513,6 +513,9 @@ async function completeLogin() {
     // 공지사항 로드
     await loadNotices();
     
+    // 공지사항 실시간 리스너 설정
+    setupNoticesListener();
+    
     setupResultScreen().catch(function(error) {
         console.error('결과 화면 설정 오류:', error);
     });
@@ -574,19 +577,22 @@ async function loadNotices() {
         const noticesContainer = document.getElementById('noticesContainer');
         
         if (noticesSnapshot.empty) {
-            noticesContainer.innerHTML = '<p style="text-align: center; color: #666;">등록된 공지사항이 없습니다.</p>';
+            noticesContainer.innerHTML = '<p style="text-align: center; color: #666; font-size: 0.9em;">등록된 공지사항이 없습니다.</p>';
             return;
         }
 
         let html = '<div class="notices-list">';
-        noticesSnapshot.forEach(function(doc) {
+        noticesSnapshot.forEach(function(doc, index) {
             const notice = doc.data();
-            const date = notice.createdAt ? notice.createdAt.toDate().toLocaleDateString('ko-KR') : '날짜 없음';
             
-            html += '<div class="notice-item">' +
+            html += '<div class="notice-item" id="notice-' + doc.id + '">' +
+                    '<div class="notice-header" onclick="toggleNotice(\'' + doc.id + '\')">' +
                     '<div class="notice-title">' + notice.title + '</div>' +
-                    '<div class="notice-content">' + notice.content + '</div>' +
-                    '<div class="notice-date">' + date + '</div>' +
+                    '<div class="notice-toggle">▼</div>' +
+                    '</div>' +
+                    '<div class="notice-content">' +
+                    '<div class="notice-text">' + notice.content + '</div>' +
+                    '</div>' +
                     '</div>';
         });
         html += '</div>';
@@ -597,8 +603,30 @@ async function loadNotices() {
         console.error('공지사항 로드 오류:', error);
         const noticesContainer = document.getElementById('noticesContainer');
         if (noticesContainer) {
-            noticesContainer.innerHTML = '<p style="text-align: center; color: #666;">공지사항을 불러올 수 없습니다.</p>';
+            noticesContainer.innerHTML = '<p style="text-align: center; color: #666; font-size: 0.9em;">공지사항을 불러올 수 없습니다.</p>';
         }
+    }
+}
+
+// 공지사항 토글 함수
+function toggleNotice(noticeId) {
+    const noticeElement = document.getElementById('notice-' + noticeId);
+    if (noticeElement) {
+        noticeElement.classList.toggle('expanded');
+    }
+}
+
+// 공지사항 실시간 리스너 설정
+function setupNoticesListener() {
+    // 로그인 상태에서만 공지사항 실시간 감지
+    if (gameState.isLoggedIn) {
+        db.collection('notices')
+            .orderBy('createdAt', 'desc')
+            .limit(10)
+            .onSnapshot(function(snapshot) {
+                console.log('공지사항 업데이트 감지');
+                loadNotices();
+            });
     }
 }
 
