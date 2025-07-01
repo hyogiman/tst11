@@ -297,10 +297,18 @@ async function createOrUpdateLoginCode() {
                 }
                 
                 await db.collection('loginCodes').doc(loginCode).set(codeData);
+                
+                // 기존 사용자 데이터도 업데이트 (로그인 코드가 변경된 경우)
+                await updateUserDataAfterCodeChange(editingCodeId, loginCode, codeData);
+                
                 showAlert('로그인 코드가 수정되었습니다.', 'success');
             } else {
                 // 로그인 코드는 그대로, 다른 필드만 수정
                 await db.collection('loginCodes').doc(loginCode).update(codeData);
+                
+                // 기존 사용자 데이터도 업데이트 (같은 로그인 코드)
+                await updateUserDataAfterCodeChange(loginCode, loginCode, codeData);
+                
                 showAlert('로그인 코드가 수정되었습니다.', 'success');
             }
         } else {
@@ -324,7 +332,75 @@ async function createOrUpdateLoginCode() {
     }
 }
 
-// 로그인 코드 수정 시작
+// 코드 수정 후 사용자 데이터 업데이트
+async function updateUserDataAfterCodeChange(oldLoginCode, newLoginCode, newCodeData) {
+    try {
+        const batch = db.batch();
+        
+        // 1. registeredUsers 컬렉션 업데이트
+        const registeredUserDoc = await db.collection('registeredUsers').doc(oldLoginCode).get();
+        if (registeredUserDoc.exists) {
+            const userData = registeredUserDoc.data();
+            
+            // 새로운 데이터로 업데이트
+            const updatedUserData = {
+                ...userData,
+                role: newCodeData.role,
+                secretCode: newCodeData.secretCode,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            if (oldLoginCode !== newLoginCode) {
+                // 로그인 코드가 변경된 경우: 기존 문서 삭제하고 새 문서 생성
+                batch.delete(db.collection('registeredUsers').doc(oldLoginCode));
+                batch.set(db.collection('registeredUsers').doc(newLoginCode), updatedUserData);
+            } else {
+                // 같은 로그인 코드: 기존 문서 업데이트
+                batch.update(db.collection('registeredUsers').doc(oldLoginCode), {
+                    role: newCodeData.role,
+                    secretCode: newCodeData.secretCode,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+        }
+        
+        // 2. activePlayers 컬렉션 업데이트
+        const activePlayerDoc = await db.collection('activePlayers').doc(oldLoginCode).get();
+        if (activePlayerDoc.exists) {
+            const playerData = activePlayerDoc.data();
+            
+            // 새로운 데이터로 업데이트
+            const updatedPlayerData = {
+                ...playerData,
+                role: newCodeData.role,
+                secretCode: newCodeData.secretCode,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            if (oldLoginCode !== newLoginCode) {
+                // 로그인 코드가 변경된 경우: 기존 문서 삭제하고 새 문서 생성
+                batch.delete(db.collection('activePlayers').doc(oldLoginCode));
+                batch.set(db.collection('activePlayers').doc(newLoginCode), updatedPlayerData);
+            } else {
+                // 같은 로그인 코드: 기존 문서 업데이트
+                batch.update(db.collection('activePlayers').doc(oldLoginCode), {
+                    role: newCodeData.role,
+                    secretCode: newCodeData.secretCode,
+                    updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+                });
+            }
+        }
+        
+        // 배치 커밋
+        await batch.commit();
+        
+        console.log('사용자 데이터 업데이트 완료:', oldLoginCode, '->', newLoginCode);
+        
+    } catch (error) {
+        console.error('사용자 데이터 업데이트 오류:', error);
+        throw error;
+    }
+}
 async function editLoginCode(loginCodeId) {
     try {
         const doc = await db.collection('loginCodes').doc(loginCodeId).get();
