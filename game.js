@@ -57,6 +57,9 @@ function setupRealtimeListener() {
                     alert('관리자가 당신의 역할 정보를 업데이트했습니다. 새로운 정보를 확인해주세요!');
                 }
                 
+                // 상호작용 미션이나 시크릿 코드 관련 내용 변경 감지를 위한 추가 리스너
+                checkForContentUpdates();
+                
                 // 사망하거나 비활성화된 경우 강제 로그아웃 (관리자나 범인에 의한 제거)
                 if (!data.isAlive || !data.isActive) {
                     if (gameState.isAlive && gameState.isLoggedIn) {
@@ -196,7 +199,10 @@ let gameState = {
     deathTimer: null,
     usedCodes: [], // 내가 이미 입력한 시크릿 코드 목록
     receivedInteractions: {}, // 내가 상대에게 코드를 입력당한 기록
-    realtimeListener: null
+    realtimeListener: null,
+    interactionMission: null, // 상호작용 미션
+    secretTitle: null, // 시크릿 코드 제목
+    secretContent: null // 시크릿 코드 내용
 };
 
 // 기본 시크릿 코드
@@ -541,6 +547,9 @@ async function completeLogin() {
     // 공지사항 실시간 리스너 설정
     setupNoticesListener();
     
+    // 로그인 코드 변경 실시간 리스너 설정
+    setupLoginCodesListener();
+    
     setupResultScreen().catch(function(error) {
         console.error('결과 화면 설정 오류:', error);
     });
@@ -553,7 +562,80 @@ async function completeLogin() {
     console.log('로그인 완료!');
 }
 
-// 상호작용 카운트 업데이트 함수
+// 상호작용 미션이나 시크릿 코드 내용 변경 감지
+async function checkForContentUpdates() {
+    if (!gameState.isLoggedIn || !gameState.secretCode) {
+        return;
+    }
+    
+    try {
+        const loginCodesSnapshot = await db.collection('loginCodes')
+            .where('secretCode', '==', gameState.secretCode)
+            .limit(1)
+            .get();
+        
+        if (!loginCodesSnapshot.empty) {
+            const loginCodeData = loginCodesSnapshot.docs[0].data();
+            const newMission = loginCodeData.interactionMission || '미션 정보가 없습니다.';
+            const newSecretTitle = loginCodeData.secretTitle || '';
+            const newSecretContent = loginCodeData.secretContent || '';
+            
+            // 상호작용 미션이 변경된 경우
+            if (gameState.interactionMission && gameState.interactionMission !== newMission) {
+                console.log('상호작용 미션이 변경되었습니다.');
+                gameState.interactionMission = newMission;
+                setupRoleCard(); // 역할 카드 업데이트
+                alert('관리자가 상호작용 미션을 업데이트했습니다. 새로운 미션을 확인해주세요!');
+            }
+            
+            // 시크릿 코드 제목이나 내용이 변경된 경우 (처음 로드가 아닌 경우에만)
+            if (gameState.secretTitle && gameState.secretContent) {
+                if (gameState.secretTitle !== newSecretTitle || gameState.secretContent !== newSecretContent) {
+                    console.log('시크릿 코드 내용이 변경되었습니다.');
+                    gameState.secretTitle = newSecretTitle;
+                    gameState.secretContent = newSecretContent;
+                    alert('관리자가 시크릿 코드 정보를 업데이트했습니다. 변경된 내용을 확인해주세요!');
+                }
+            }
+            
+            // 처음 로드하는 경우 데이터 저장 (알림 없음)
+            if (!gameState.interactionMission) {
+                gameState.interactionMission = newMission;
+            }
+            if (!gameState.secretTitle) {
+                gameState.secretTitle = newSecretTitle;
+            }
+            if (!gameState.secretContent) {
+                gameState.secretContent = newSecretContent;
+            }
+        }
+    } catch (error) {
+        console.error('콘텐츠 업데이트 확인 오류:', error);
+    }
+}
+
+// 로그인 코드 컬렉션 실시간 리스너 설정
+function setupLoginCodesListener() {
+    if (!gameState.isLoggedIn || !gameState.secretCode) {
+        return;
+    }
+    
+    // 내 시크릿 코드에 해당하는 로그인 코드 문서 감지
+    db.collection('loginCodes')
+        .where('secretCode', '==', gameState.secretCode)
+        .onSnapshot(function(snapshot) {
+            if (!gameState.isLoggedIn) {
+                return;
+            }
+            
+            snapshot.docChanges().forEach(function(change) {
+                if (change.type === 'modified') {
+                    console.log('로그인 코드 정보가 수정되었습니다.');
+                    checkForContentUpdates();
+                }
+            });
+        });
+}
 function updateInteractionCount() {
     if (gameState.isLoggedIn) {
         // 내가 입력한 코드 수
@@ -701,7 +783,10 @@ async function logout() {
             deathTimer: null,
             usedCodes: [],
             receivedInteractions: {},
-            realtimeListener: null
+            realtimeListener: null,
+            interactionMission: null,
+            secretTitle: null,
+            secretContent: null
         };
 
         // 헤더를 원래 상태로 복구 및 컨텐츠 원상복구
