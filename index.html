@@ -500,59 +500,69 @@
         }
 
         .notices-list {
-            max-height: 250px;
+            max-height: 200px;
             overflow-y: auto;
             scrollbar-width: thin;
             scrollbar-color: #d1d5db transparent;
         }
 
-        .notices-list::-webkit-scrollbar {
-            width: 6px;
-        }
-
-        .notices-list::-webkit-scrollbar-track {
-            background: transparent;
-        }
-
-        .notices-list::-webkit-scrollbar-thumb {
-            background: #d1d5db;
-            border-radius: 3px;
-        }
-
         .notice-item {
             background: white;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 12px;
-            border-left: 4px solid #667eea;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+            border-radius: 8px;
+            margin-bottom: 8px;
+            border: 1px solid #e5e7eb;
             transition: all 0.3s ease;
+            overflow: hidden;
         }
 
-        .notice-item:hover {
-            transform: translateX(4px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        .notice-header {
+            padding: 12px 16px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: white;
+            transition: background-color 0.3s ease;
+        }
+
+        .notice-header:hover {
+            background: #f9fafb;
         }
 
         .notice-title {
             font-weight: 600;
             color: #1f2937;
-            margin-bottom: 8px;
-            font-size: 1.1em;
+            font-size: 0.95em;
+            flex: 1;
+        }
+
+        .notice-toggle {
+            color: #6b7280;
+            font-size: 0.8em;
+            transition: transform 0.3s ease;
+        }
+
+        .notice-item.expanded .notice-toggle {
+            transform: rotate(180deg);
         }
 
         .notice-content {
-            color: #4b5563;
-            line-height: 1.5;
-            margin-bottom: 8px;
-            font-weight: 400;
+            padding: 0 16px;
+            max-height: 0;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            background: #f9fafb;
         }
 
-        .notice-date {
-            font-size: 0.85em;
-            color: #9ca3af;
-            text-align: right;
-            font-weight: 500;
+        .notice-item.expanded .notice-content {
+            max-height: 200px;
+            padding: 12px 16px;
+        }
+
+        .notice-text {
+            color: #4b5563;
+            line-height: 1.4;
+            font-size: 0.9em;
         }
 
         /* 반응형 */
