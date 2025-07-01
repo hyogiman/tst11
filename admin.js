@@ -9,7 +9,7 @@ async function adminLogin() {
     const adminId = document.getElementById('adminId').value;
     const adminPw = document.getElementById('adminPw').value;
 
-    if (adminId === 'admin' && adminPw === 'dlsgur12!@') {
+    if (adminId === 'admin' && adminPw === 'admin') {
         adminState.isLoggedIn = true;
         showDashboard();
         loadDashboardData();
@@ -228,8 +228,11 @@ async function resetGame() {
     }
 }
 
-// 로그인 코드 생성
-async function createLoginCode() {
+// 로그인 코드 생성/수정 관련 변수
+let editingCodeId = null;
+
+// 로그인 코드 생성 또는 수정
+async function createOrUpdateLoginCode() {
     const loginCode = document.getElementById('newLoginCode').value.toUpperCase();
     const role = document.getElementById('newCodeRole').value;
     const secretCode = document.getElementById('newSecretCode').value.toUpperCase();
@@ -248,36 +251,131 @@ async function createLoginCode() {
     }
 
     try {
-        const existingCodeDoc = await db.collection('loginCodes').doc(loginCode).get();
-        if (existingCodeDoc.exists) {
-            alert('이미 존재하는 로그인 코드입니다.');
-            return;
+        // 수정 모드가 아닌 경우에만 중복 검사
+        if (!editingCodeId) {
+            const existingCodeDoc = await db.collection('loginCodes').doc(loginCode).get();
+            if (existingCodeDoc.exists) {
+                alert('이미 존재하는 로그인 코드입니다.');
+                return;
+            }
         }
 
-        await db.collection('loginCodes').doc(loginCode).set({
+        const codeData = {
             role: role,
             secretCode: secretCode,
             secretTitle: secretTitle,
             secretContent: secretContent,
             interactionMission: interactionMission,
-            used: false,
-            createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-            createdBy: 'admin'
-        });
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            updatedBy: 'admin'
+        };
 
-        document.getElementById('newLoginCode').value = '';
-        document.getElementById('newSecretCode').value = '';
-        document.getElementById('newSecretTitle').value = '';
-        document.getElementById('newSecretContent').value = '';
-        document.getElementById('newInteractionMission').value = '';
+        if (editingCodeId) {
+            // 수정 모드
+            if (editingCodeId !== loginCode) {
+                // 로그인 코드가 변경된 경우
+                const existingCodeDoc = await db.collection('loginCodes').doc(loginCode).get();
+                if (existingCodeDoc.exists) {
+                    alert('변경하려는 로그인 코드가 이미 존재합니다.');
+                    return;
+                }
+                
+                // 기존 문서 삭제하고 새 문서 생성
+                await db.collection('loginCodes').doc(editingCodeId).delete();
+                
+                // 기존 데이터에서 used 정보 가져오기
+                const oldDoc = await db.collection('loginCodes').doc(editingCodeId).get();
+                if (oldDoc.exists) {
+                    const oldData = oldDoc.data();
+                    codeData.used = oldData.used || false;
+                    codeData.usedBy = oldData.usedBy || null;
+                    codeData.usedAt = oldData.usedAt || null;
+                    codeData.createdAt = oldData.createdAt || firebase.firestore.FieldValue.serverTimestamp();
+                } else {
+                    codeData.used = false;
+                    codeData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+                }
+                
+                await db.collection('loginCodes').doc(loginCode).set(codeData);
+                showAlert('로그인 코드가 수정되었습니다.', 'success');
+            } else {
+                // 로그인 코드는 그대로, 다른 필드만 수정
+                await db.collection('loginCodes').doc(loginCode).update(codeData);
+                showAlert('로그인 코드가 수정되었습니다.', 'success');
+            }
+        } else {
+            // 생성 모드
+            codeData.used = false;
+            codeData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
+            codeData.createdBy = 'admin';
+            
+            await db.collection('loginCodes').doc(loginCode).set(codeData);
+            showAlert('로그인 코드가 생성되었습니다.', 'success');
+        }
 
-        showAlert('로그인 코드가 생성되었습니다.', 'success');
+        // 폼 초기화 및 수정 모드 해제
+        resetCodeForm();
         loadLoginCodesList();
         loadOverviewData();
+
     } catch (error) {
-        console.error('로그인 코드 생성 오류:', error);
-        showAlert('로그인 코드 생성 중 오류가 발생했습니다.', 'error');
+        console.error('로그인 코드 처리 오류:', error);
+        showAlert('처리 중 오류가 발생했습니다.', 'error');
     }
+}
+
+// 로그인 코드 수정 시작
+async function editLoginCode(loginCodeId) {
+    try {
+        const doc = await db.collection('loginCodes').doc(loginCodeId).get();
+        if (!doc.exists) {
+            alert('로그인 코드를 찾을 수 없습니다.');
+            return;
+        }
+
+        const data = doc.data();
+        
+        // 폼에 기존 데이터 입력
+        document.getElementById('newLoginCode').value = loginCodeId;
+        document.getElementById('newCodeRole').value = data.role;
+        document.getElementById('newSecretCode').value = data.secretCode;
+        document.getElementById('newSecretTitle').value = data.secretTitle || '';
+        document.getElementById('newSecretContent').value = data.secretContent || '';
+        document.getElementById('newInteractionMission').value = data.interactionMission || '';
+
+        // 수정 모드로 전환
+        editingCodeId = loginCodeId;
+        document.getElementById('codeFormTitle').textContent = '로그인 코드 수정';
+        document.getElementById('createCodeBtn').textContent = '수정 완료';
+        document.getElementById('cancelEditBtn').style.display = 'inline-block';
+
+        // 폼 영역으로 스크롤
+        document.getElementById('codeFormTitle').scrollIntoView({ behavior: 'smooth' });
+
+    } catch (error) {
+        console.error('로그인 코드 수정 시작 오류:', error);
+        alert('수정 중 오류가 발생했습니다.');
+    }
+}
+
+// 수정 취소
+function cancelEdit() {
+    resetCodeForm();
+}
+
+// 폼 초기화
+function resetCodeForm() {
+    editingCodeId = null;
+    document.getElementById('codeFormTitle').textContent = '새 로그인 코드 생성';
+    document.getElementById('createCodeBtn').textContent = '코드 생성';
+    document.getElementById('cancelEditBtn').style.display = 'none';
+    
+    document.getElementById('newLoginCode').value = '';
+    document.getElementById('newCodeRole').value = 'detective';
+    document.getElementById('newSecretCode').value = '';
+    document.getElementById('newSecretTitle').value = '';
+    document.getElementById('newSecretContent').value = '';
+    document.getElementById('newInteractionMission').value = '';
 }
 
 // 로그인 코드 목록 로드
@@ -303,7 +401,10 @@ async function loadLoginCodesList() {
             html += '<div class="list-item">';
             html += '<div class="list-item-header">';
             html += '<div class="list-item-title">' + doc.id + ' - ' + roleNames[data.role] + '</div>';
+            html += '<div>';
+            html += '<button class="btn warning" onclick="editLoginCode(\'' + doc.id + '\')" style="width: auto; padding: 5px 10px; font-size: 12px; margin-right: 5px;">수정</button>';
             html += '<button class="btn danger" onclick="deleteLoginCode(\'' + doc.id + '\')" style="width: auto; padding: 5px 10px; font-size: 12px;">삭제</button>';
+            html += '</div>';
             html += '</div>';
             html += '<div class="list-item-subtitle">시크릿 코드: ' + data.secretCode + '</div>';
             html += '<div class="list-item-subtitle">제목: ' + (data.secretTitle || '제목 없음') + '</div>';
@@ -794,7 +895,8 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('resetGameBtn').addEventListener('click', resetGame);
 
     // 로그인 코드 생성 관련 이벤트
-    document.getElementById('createCodeBtn').addEventListener('click', createLoginCode);
+    document.getElementById('createCodeBtn').addEventListener('click', createOrUpdateLoginCode);
+    document.getElementById('cancelEditBtn').addEventListener('click', cancelEdit);
 
     // 입력 필드 자동 대문자 변환
     document.getElementById('newLoginCode').addEventListener('input', function(e) {
