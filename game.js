@@ -261,15 +261,22 @@ function toggleMySecret() {
     const secretSection = document.querySelector('.my-secret-section');
     const toggleIcon = document.getElementById('secretToggleIcon');
     
-    if (secretSection) {
+    if (secretSection && toggleIcon) {
         secretSection.classList.toggle('expanded');
         
-        // 아이콘 변경
-        if (secretSection.classList.contains('expanded')) {
-            toggleIcon.textContent = '🙈';
-        } else {
-            toggleIcon.textContent = '👁️';
-        }
+        // 부드러운 아이콘 전환 애니메이션
+        toggleIcon.style.transform = 'scale(0)';
+        
+        setTimeout(() => {
+            if (secretSection.classList.contains('expanded')) {
+                toggleIcon.textContent = '🔓'; // 잠금 해제
+            } else {
+                toggleIcon.textContent = '🔒'; // 잠금
+            }
+            
+            // 아이콘이 나타나는 애니메이션
+            toggleIcon.style.transform = 'scale(1)';
+        }, 200);
     }
 }
 
