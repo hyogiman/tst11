@@ -147,7 +147,13 @@ function showScreen(screenName) {
         console.log('로그인이 필요합니다. 화면 전환 차단됨');
         return false; // 아무것도 하지 않음
     }
-    
+
+    // 화면 전환 시 코드 결과 메시지 자동 제거
+    const codeResult = document.getElementById('codeResult');
+    if (codeResult) {
+        codeResult.innerHTML = '';
+    }
+   
     // 로그인된 상태에서만 정상적인 화면 전환
     document.querySelectorAll('.screen').forEach(function(screen) {
         screen.classList.remove('active');
