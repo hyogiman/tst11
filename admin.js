@@ -848,6 +848,7 @@ async function loadSettingsData() {
             const settings = settingsDoc.data();
             document.getElementById('maxKillsSetting').value = settings.maxKills || 3;
             document.getElementById('killTimerSetting').value = settings.killTimer || 180;
+            document.getElementById('missionResetCooldownSetting').value = settings.missionResetCooldown || 300;
         }
     } catch (error) {
         console.error('설정 데이터 로드 오류:', error);
@@ -859,10 +860,12 @@ async function saveSettings() {
     try {
         const maxKills = parseInt(document.getElementById('maxKillsSetting').value);
         const killTimer = parseInt(document.getElementById('killTimerSetting').value);
+        const missionResetCooldown = parseInt(document.getElementById('missionResetCooldownSetting').value);
 
         await db.collection('gameSettings').doc('config').set({
             maxKills: maxKills,
             killTimer: killTimer,
+            missionResetCooldown: missionResetCooldown,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedBy: 'admin'
         });
