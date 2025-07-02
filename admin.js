@@ -848,7 +848,9 @@ async function loadSettingsData() {
             const settings = settingsDoc.data();
             document.getElementById('maxKillsSetting').value = settings.maxKills || 3;
             document.getElementById('killTimerSetting').value = settings.killTimer || 180;
-            document.getElementById('missionResetCooldownSetting').value = settings.missionResetCooldown || 300;
+            // 0일 때도 정확히 0으로 표시되도록 수정
+            document.getElementById('missionResetCooldownSetting').value = 
+                settings.hasOwnProperty('missionResetCooldown') ? settings.missionResetCooldown : 300;
         }
     } catch (error) {
         console.error('설정 데이터 로드 오류:', error);
@@ -861,7 +863,13 @@ async function saveSettings() {
         const maxKills = parseInt(document.getElementById('maxKillsSetting').value);
         const killTimer = parseInt(document.getElementById('killTimerSetting').value);
         const missionResetCooldown = parseInt(document.getElementById('missionResetCooldownSetting').value);
-
+        
+        // 0 이상의 값만 허용
+        if (isNaN(missionResetCooldown) || missionResetCooldown < 0) {
+            showAlert('미션 초기화 쿨타임은 0 이상의 숫자여야 합니다.', 'error');
+            return;
+        }
+        
         await db.collection('gameSettings').doc('config').set({
             maxKills: maxKills,
             killTimer: killTimer,
@@ -870,7 +878,8 @@ async function saveSettings() {
             updatedBy: 'admin'
         });
 
-        showAlert('설정이 저장되었습니다.', 'success');
+        showAlert('설정이 저장되었습니다. (미션 쿨타임: ' + 
+                 (missionResetCooldown === 0 ? '제한 없음' : missionResetCooldown + '초') + ')', 'success');
     } catch (error) {
         console.error('설정 저장 오류:', error);
         showAlert('설정 저장 중 오류가 발생했습니다.', 'error');
