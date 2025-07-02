@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔄 미션 초기화</title>
+    <title>🔄미션 초기화</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔄</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -424,6 +424,63 @@
             }
         }
 
+        // 미션 초기화 쿨타임 확인 함수
+        async function checkMissionResetCooldown(loginCode) {
+            try {
+                // 설정에서 쿨타임 가져오기
+                const settingsDoc = await db.collection('gameSettings').doc('config').get();
+                const cooldownSeconds = settingsDoc.exists ? (settingsDoc.data().missionResetCooldown || 300) : 300;
+                
+                // 쿨타임이 0이면 제한 없음
+                if (cooldownSeconds === 0) {
+                    return { canReset: true, remainingTime: 0 };
+                }
+                
+                // 사용자의 마지막 미션 초기화 시간 확인
+                const userDoc = await db.collection('registeredUsers').doc(loginCode).get();
+                if (!userDoc.exists) {
+                    return { canReset: false, remainingTime: 0, error: '등록되지 않은 사용자입니다.' };
+                }
+                
+                const userData = userDoc.data();
+                const lastResetTime = userData.lastMissionResetTime;
+                
+                if (!lastResetTime) {
+                    // 처음 초기화하는 경우
+                    return { canReset: true, remainingTime: 0 };
+                }
+                
+                const now = Date.now();
+                const timeSinceLastReset = now - lastResetTime.toMillis();
+                const cooldownMillis = cooldownSeconds * 1000;
+                
+                if (timeSinceLastReset >= cooldownMillis) {
+                    return { canReset: true, remainingTime: 0 };
+                } else {
+                    const remainingTime = Math.ceil((cooldownMillis - timeSinceLastReset) / 1000);
+                    return { canReset: false, remainingTime: remainingTime };
+                }
+                
+            } catch (error) {
+                console.error('쿨타임 확인 오류:', error);
+                return { canReset: false, remainingTime: 0, error: '쿨타임 확인 중 오류가 발생했습니다.' };
+            }
+        }
+
+        // 남은 시간을 읽기 쉬운 형태로 변환
+        function formatRemainingTime(seconds) {
+            if (seconds < 60) {
+                return seconds + '초';
+            } else if (seconds < 3600) {
+                const minutes = Math.floor(seconds / 60);
+                const remainingSeconds = seconds % 60;
+                return minutes + '분' + (remainingSeconds > 0 ? ' ' + remainingSeconds + '초' : '');
+            } else {
+                const hours = Math.floor(seconds / 3600);
+                const minutes = Math.floor((seconds % 3600) / 60);
+                return hours + '시간' + (minutes > 0 ? ' ' + minutes + '분' : '');
+            }
+        }
         // 미션 초기화 함수
         async function resetMission() {
             const loginCode = document.getElementById('loginCode').value.toUpperCase();
@@ -436,6 +493,19 @@
 
             if (loginCode.length !== 4) {
                 showError('로그인 코드는 4자리여야 합니다.');
+                return;
+            }
+
+            // 쿨타임 확인
+            const cooldownCheck = await checkMissionResetCooldown(loginCode);
+            if (cooldownCheck.error) {
+                showError(cooldownCheck.error);
+                return;
+            }
+
+            if (!cooldownCheck.canReset) {
+                const timeText = formatRemainingTime(cooldownCheck.remainingTime);
+                showError('미션 초기화 쿨타임이 남아있습니다. ' + timeText + ' 후에 다시 시도해주세요.');
                 return;
             }
 
@@ -478,10 +548,11 @@
                 // Firestore 업데이트 배치
                 const batch = db.batch();
 
-                // 1. registeredUsers 업데이트
+                // 1. registeredUsers 업데이트 (마지막 초기화 시간 포함)
                 const userRef = db.collection('registeredUsers').doc(loginCode);
                 batch.update(userRef, {
                     secretCode: newSecretCode,
+                    lastMissionResetTime: firebase.firestore.FieldValue.serverTimestamp(),
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
@@ -537,18 +608,8 @@
 
         // 게임으로 돌아가기 함수
         function backToGame() {
-            // 현재 페이지를 닫고 index.html로 이동
-            if (window.history.length > 1) {
-                // 브라우저 히스토리가 있으면 뒤로 가기
-                window.history.back();
-                // 잠시 후 index.html로 강제 이동 (뒤로 가기가 작동하지 않을 경우를 대비)
-                setTimeout(() => {
-                    window.location.href = 'index.html';
-                }, 500);
-            } else {
-                // 히스토리가 없으면 바로 index.html로 이동
-                window.location.href = 'index.html';
-            }
+            // 현재 창에서 index.html로 바로 이동
+            window.location.replace('index.html');
         }
         // 이벤트 리스너
         document.addEventListener('DOMContentLoaded', function() {
