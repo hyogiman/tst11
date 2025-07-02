@@ -573,6 +573,7 @@
             overflow: hidden;
             box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
             border: 1px solid rgba(255, 255, 255, 0.8);
+            transition: all 0.3s ease;
         }
 
         .my-secret-toggle {
@@ -583,32 +584,61 @@
             align-items: center;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            transition: all 0.3s ease;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .my-secret-toggle::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+            transition: left 0.5s ease;
+        }
+
+        .my-secret-toggle:hover::before {
+            left: 100%;
         }
 
         .my-secret-toggle:hover {
             background: linear-gradient(135deg, #5a67d8 0%, #6b46c1 100%);
+            transform: translateY(-1px);
+        }
+
+        .my-secret-section.expanded .my-secret-toggle {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+        }
+
+        .my-secret-section.expanded .my-secret-toggle:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
         }
 
         .my-secret-title {
             font-weight: 600;
             font-size: 1.1em;
+            letter-spacing: 0.3px;
         }
 
         .toggle-icon {
-            font-size: 1.2em;
-            transition: transform 0.3s ease;
+            font-size: 1.3em;
+            transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            display: inline-block;
         }
 
         .my-secret-section.expanded .toggle-icon {
-            transform: rotate(180deg);
+            transform: scale(1.1);
         }
 
         .my-secret-content {
             max-height: 0;
             overflow: hidden;
-            transition: all 0.3s ease;
-            background: white;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
         }
 
         .my-secret-section.expanded .my-secret-content {
@@ -622,12 +652,25 @@
             text-align: center;
             letter-spacing: 4px;
             color: #ef4444;
-            background: #fee2e2;
+            background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
             padding: 20px;
             border-radius: 12px;
             margin-bottom: 16px;
             box-shadow: 0 4px 12px rgba(239, 68, 68, 0.1);
-            border: 2px solid #fecaca;
+            border: 2px solid #fca5a5;
+            transition: all 0.3s ease;
+            animation: secretReveal 0.5s ease-out;
+        }
+
+        @keyframes secretReveal {
+            0% {
+                opacity: 0;
+                transform: translateY(10px) scale(0.95);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
         }
 
         .my-secret-description {
@@ -637,6 +680,19 @@
             font-weight: 400;
             margin: 0;
             line-height: 1.4;
+            opacity: 0;
+            animation: fadeInUp 0.5s ease-out 0.2s forwards;
+        }
+
+        @keyframes fadeInUp {
+            0% {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
         @media (max-width: 480px) {
             .container {
@@ -817,7 +873,7 @@
                 <div class="my-secret-section">
                     <div class="my-secret-toggle" id="mySecretToggle">
                         <div class="my-secret-title">나의 시크릿 코드</div>
-                        <div class="toggle-icon" id="secretToggleIcon">👁️</div>
+                        <div class="toggle-icon" id="secretToggleIcon">🔒</div>
                     </div>
                     <div class="my-secret-content" id="mySecretContent">
                         <div class="my-secret-code" id="mySecretCode">-</div>
