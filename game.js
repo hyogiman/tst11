@@ -1424,4 +1424,10 @@ document.addEventListener('DOMContentLoaded', function() {
             submitCode();
         }
     });
+    
+    // 나의 시크릿 코드 토글 이벤트 리스너
+    const mySecretToggle = document.getElementById('mySecretToggle');
+    if (mySecretToggle) {
+        mySecretToggle.addEventListener('click', toggleMySecret);
+    }
 });
