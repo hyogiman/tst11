@@ -256,6 +256,26 @@ function generateCriminalEvidence() {
     return evidences[Math.floor(Math.random() * evidences.length)];
 }
 
+// 나의 시크릿 코드 토글 함수
+function toggleMySecret() {
+    const secretSection = document.querySelector('.my-secret-section');
+    const toggleIcon = document.getElementById('secretToggleIcon');
+    
+    if (secretSection) {
+        secretSection.classList.toggle('expanded');
+        
+        // 아이콘 변경
+        if (secretSection.classList.contains('expanded')) {
+            toggleIcon.textContent = '🙈';
+        } else {
+            toggleIcon.textContent = '👁️';
+        }
+    }
+}
+
+// 전역 스코프에 함수 등록
+window.toggleMySecret = toggleMySecret;
+
 // 게임 상태 확인
 async function checkGameStatus() {
     try {
