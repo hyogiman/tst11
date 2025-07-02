@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>🔄미션 초기화</title>
+    <title>🔄 미션 초기화</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔄</text></svg>">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;600;700&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -387,6 +387,8 @@
         // 시크릿 코드 중복 확인 함수
         async function checkSecretCodeDuplicate(secretCode) {
             try {
+                await waitForFirebase(); // Firebase 로드 대기
+                
                 // 1. registeredUsers에서 확인
                 const usersSnapshot = await db.collection('registeredUsers')
                     .where('secretCode', '==', secretCode)
@@ -424,12 +426,75 @@
             }
         }
 
-        // 미션 초기화 쿨타임 확인 함수
+        // Firebase 초기화 대기 함수
+        function waitForFirebase() {
+            return new Promise((resolve) => {
+                if (typeof db !== 'undefined') {
+                    resolve();
+                } else {
+                    const checkFirebase = setInterval(() => {
+                        if (typeof db !== 'undefined') {
+                            clearInterval(checkFirebase);
+                            resolve();
+                        }
+                    }, 100);
+                }
+            });
+        }
+
+        // 게임 상태 확인 함수
+        async function checkGameStatus() {
+            try {
+                await waitForFirebase(); // Firebase 로드 대기
+                const gameDoc = await db.collection('gameSettings').doc('gameStatus').get();
+                return gameDoc.exists ? gameDoc.data().isActive : false;
+            } catch (error) {
+                console.error('게임 상태 확인 오류:', error);
+                return false;
+            }
+        }
+
+        // 페이지 접근 권한 확인
+        async function checkPageAccess() {
+            const isGameActive = await checkGameStatus();
+            
+            if (!isGameActive) {
+                // 게임이 시작되지 않은 경우
+                document.getElementById('resetForm').style.display = 'none';
+                document.getElementById('errorMessage').innerHTML = 
+                    '<h3>⚠️ 게임이 시작되지 않음</h3>' +
+                    '<p>관리자가 아직 게임을 시작하지 않았습니다.<br>' +
+                    '게임 시작 후 다시 시도해주세요.</p>';
+                document.getElementById('errorMessage').style.display = 'block';
+                
+                // 주기적으로 게임 상태 확인 (10초마다)
+                const statusCheckInterval = setInterval(async () => {
+                    const currentGameStatus = await checkGameStatus();
+                    if (currentGameStatus) {
+                        clearInterval(statusCheckInterval);
+                        location.reload(); // 게임이 시작되면 페이지 새로고침
+                    }
+                }, 10000);
+                
+                return false;
+            }
+            
+            return true;
+        }
         async function checkMissionResetCooldown(loginCode) {
             try {
                 // 설정에서 쿨타임 가져오기
                 const settingsDoc = await db.collection('gameSettings').doc('config').get();
-                const cooldownSeconds = settingsDoc.exists ? (settingsDoc.data().missionResetCooldown || 300) : 300;
+                
+                // 0일 때도 정확히 0으로 처리되도록 수정
+                let cooldownSeconds;
+                if (settingsDoc.exists && settingsDoc.data().hasOwnProperty('missionResetCooldown')) {
+                    cooldownSeconds = settingsDoc.data().missionResetCooldown;
+                } else {
+                    cooldownSeconds = 300; // 기본값
+                }
+                
+                console.log('현재 설정된 쿨타임:', cooldownSeconds + '초'); // 디버깅용
                 
                 // 쿨타임이 0이면 제한 없음
                 if (cooldownSeconds === 0) {
@@ -482,7 +547,14 @@
             }
         }
         // 미션 초기화 함수
+        // 미션 초기화 함수
         async function resetMission() {
+            // 게임 상태 먼저 확인
+            const canAccess = await checkPageAccess();
+            if (!canAccess) {
+                return;
+            }
+
             const loginCode = document.getElementById('loginCode').value.toUpperCase();
             const reconnectPassword = document.getElementById('reconnectPassword').value;
 
@@ -612,7 +684,13 @@
             window.location.replace('index.html');
         }
         // 이벤트 리스너
-        document.addEventListener('DOMContentLoaded', function() {
+        document.addEventListener('DOMContentLoaded', async function() {
+            // 페이지 로드 시 게임 상태 확인
+            const canAccess = await checkPageAccess();
+            if (!canAccess) {
+                return; // 게임이 시작되지 않으면 더 이상 진행하지 않음
+            }
+
             document.getElementById('resetBtn').addEventListener('click', resetMission);
             document.getElementById('backToGameBtn').addEventListener('click', backToGame);
             
