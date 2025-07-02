@@ -287,6 +287,7 @@
             <div class="success-message" id="successMessage">
                 <h3>✅ 미션 초기화 완료!</h3>
                 <p>새로운 상호작용 미션과 시크릿 코드가 배정되었습니다.<br>게임 앱을 다시 실행해주세요.</p>
+                <button class="btn" id="backToGameBtn" style="margin-top: 20px;">🎮 게임으로 돌아가기</button>
             </div>
 
             <div class="loading" id="loading">
@@ -534,9 +535,25 @@
             document.getElementById('successMessage').style.display = 'none';
         }
 
+        // 게임으로 돌아가기 함수
+        function backToGame() {
+            // 현재 페이지를 닫고 index.html로 이동
+            if (window.history.length > 1) {
+                // 브라우저 히스토리가 있으면 뒤로 가기
+                window.history.back();
+                // 잠시 후 index.html로 강제 이동 (뒤로 가기가 작동하지 않을 경우를 대비)
+                setTimeout(() => {
+                    window.location.href = 'index.html';
+                }, 500);
+            } else {
+                // 히스토리가 없으면 바로 index.html로 이동
+                window.location.href = 'index.html';
+            }
+        }
         // 이벤트 리스너
         document.addEventListener('DOMContentLoaded', function() {
             document.getElementById('resetBtn').addEventListener('click', resetMission);
+            document.getElementById('backToGameBtn').addEventListener('click', backToGame);
             
             // 입력 필드 자동 대문자 변환
             document.getElementById('loginCode').addEventListener('input', function(e) {
