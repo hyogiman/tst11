@@ -947,7 +947,7 @@ async function submitCode() {
         const interactionData = gameState.receivedInteractions[targetCode];
         if (interactionData.cooldownUntil && now < interactionData.cooldownUntil) {
             const remainingTime = Math.ceil((interactionData.cooldownUntil - now) / 1000);
-            alert('이 플레이어가 최근에 당신과 상호작용했습니다. ' + remainingTime + '초 후에 다시 시도하세요.');
+            alert('이 플레이어가 최근에 당신과 상호작용했습니다. 잠시 후에 다시 시도하세요.');
             return;
         }
     }
