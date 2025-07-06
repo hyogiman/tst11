@@ -265,7 +265,7 @@
 
             <div class="info-box">
                 <h3>📋 미션 초기화란?</h3>
-                <p>상호작용 게임에서 미션이 노출되었을 때, 새로운 미션과 시크릿 코드로 변경하여 게임을 계속 진행할 수 있도록 하는 기능입니다.</p>
+                <p>상호작용 게임에서 미션이 노출되었을 때, 새로운 상호작용 미션과 시크릿 코드로 변경하여 게임을 계속 진행할 수 있도록 하는 기능입니다.</p>
             </div>
 
             <div class="error-message" id="errorMessage"></div>
@@ -628,14 +628,13 @@
                     updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                 });
 
-                // 2. loginCodes 업데이트 (존재하는 경우)
+                // 2. loginCodes 업데이트 (존재하는 경우) - 제목과 내용은 유지
                 if (loginCodeDocId) {
                     const loginCodeRef = db.collection('loginCodes').doc(loginCodeDocId);
                     batch.update(loginCodeRef, {
                         secretCode: newSecretCode,
                         interactionMission: randomMission,
-                        secretTitle: '초기화된 정보',
-                        secretContent: '미션 초기화로 인해 새롭게 생성된 내용입니다.',
+                        // secretTitle과 secretContent는 건드리지 않음 (기존 값 유지)
                         updatedAt: firebase.firestore.FieldValue.serverTimestamp()
                     });
                 }
