@@ -526,6 +526,49 @@
         }
         
         /* ========== 상인 랭킹 관리자 페이지 CSS 끝 ========== */ 
+        /* ========== 징벌 기능 CSS (여기서부터 추가) ========== */
+        
+        /* 징벌 버튼 스타일 */
+        .btn.punish {
+            background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+            color: white;
+            border: none;
+            box-shadow: 0 4px 14px rgba(139, 92, 246, 0.3);
+        }
+
+        .btn.punish:hover {
+            background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
+            box-shadow: 0 8px 25px rgba(139, 92, 246, 0.4);
+            transform: translateY(-2px);
+        }
+
+        .btn.punish:active {
+            transform: translateY(0);
+            box-shadow: 0 4px 14px rgba(139, 92, 246, 0.3);
+        }
+
+        /* 징벌된 플레이어 구분을 위한 추가 스타일 */
+        .status-punished {
+            color: #8b5cf6 !important;
+            font-weight: 600;
+            position: relative;
+        }
+
+        .status-punished::before {
+            content: '⚡';
+            margin-right: 4px;
+            font-size: 0.9em;
+        }
+
+        /* 징벌 관련 알림 스타일 */
+        .alert-punishment {
+            background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
+            color: #6b21a8;
+            border: 1px solid #c4b5fd;
+            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.1);
+        }
+        
+        /* ========== 징벌 기능 CSS 끝 ========== */
     </style>
 </head>
 <body>
