@@ -750,6 +750,309 @@
                 100% { transform: translateY(-2px); }
             }
         }
+        /* ========== 상인 랭킹 시스템 CSS (여기서부터 추가) ========== */
+        
+        /* 상인 랭킹 정보 스타일 */
+        .merchant-ranking-info {
+            background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            color: white;
+            box-shadow: 0 8px 25px rgba(240, 147, 251, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(10px);
+            text-align: center;
+        }
+
+        .ranking-display {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .rank-title {
+            font-size: 1.1em;
+            font-weight: 600;
+            opacity: 0.9;
+            letter-spacing: 0.5px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .rank-numbers {
+            display: flex;
+            align-items: baseline;
+            justify-content: center;
+            gap: 4px;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        .rank-number {
+            font-size: 2.5em;
+            font-weight: 700;
+            text-shadow: 0 3px 6px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-block;
+            min-width: 1.2em;
+            text-align: center;
+        }
+
+        .rank-separator {
+            font-size: 1.3em;
+            font-weight: 500;
+            opacity: 0.8;
+            margin: 0 2px;
+        }
+
+        .total-merchants {
+            font-size: 1.8em;
+            font-weight: 600;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-block;
+            min-width: 1em;
+            text-align: center;
+        }
+
+        .rank-suffix {
+            font-size: 1.3em;
+            font-weight: 500;
+            opacity: 0.8;
+            margin-left: 2px;
+        }
+
+        /* 랭킹 로딩 상태 */
+        .ranking-display.loading {
+            opacity: 0.7;
+        }
+
+        .ranking-display.loading .rank-title {
+            animation: pulse 1.5s ease-in-out infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                opacity: 0.7;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+
+        /* 숫자 변경 애니메이션 */
+        .rank-number.updating,
+        .total-merchants.updating {
+            animation: numberBounce 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        @keyframes numberBounce {
+            0% {
+                transform: scale(1);
+            }
+            30% {
+                transform: scale(1.15);
+                color: #ffd700;
+            }
+            60% {
+                transform: scale(0.95);
+            }
+            100% {
+                transform: scale(1);
+            }
+        }
+
+        /* 순위 향상 시 특별 효과 */
+        .rank-number.rank-up {
+            animation: rankUp 1s ease-out;
+        }
+
+        @keyframes rankUp {
+            0% {
+                transform: scale(1) translateY(0);
+                color: inherit;
+            }
+            30% {
+                transform: scale(1.2) translateY(-5px);
+                color: #ffd700;
+                text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+            }
+            70% {
+                transform: scale(1.05) translateY(-2px);
+            }
+            100% {
+                transform: scale(1) translateY(0);
+                color: inherit;
+            }
+        }
+
+        /* 순위 하락 시 효과 */
+        .rank-number.rank-down {
+            animation: rankDown 0.8s ease-out;
+        }
+
+        @keyframes rankDown {
+            0% {
+                transform: scale(1);
+                color: inherit;
+            }
+            50% {
+                transform: scale(0.9);
+                color: #ff6b6b;
+            }
+            100% {
+                transform: scale(1);
+                color: inherit;
+            }
+        }
+
+        /* 랭킹 토스트 메시지 스타일 */
+        .ranking-toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-100px);
+            z-index: 9999;
+            padding: 0;
+            border-radius: 12px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 350px;
+            width: 90%;
+        }
+
+        .ranking-toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .toast-content {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 16px 20px;
+            color: white;
+            font-weight: 500;
+            font-size: 0.95em;
+        }
+
+        .toast-icon {
+            font-size: 1.3em;
+            flex-shrink: 0;
+        }
+
+        .toast-message {
+            flex: 1;
+            line-height: 1.4;
+        }
+
+        /* 토스트 타입별 스타일 */
+        .ranking-toast-success {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        }
+
+        .ranking-toast-warning {
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .ranking-toast-info {
+            background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        }
+
+        /* 순위 메시지 스타일 */
+        .rank-message {
+            margin-top: 8px;
+            font-size: 0.9em;
+            font-weight: 500;
+            opacity: 0.9;
+            text-align: center;
+            padding: 6px 12px;
+            border-radius: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(5px);
+        }
+
+        .rank-message.first-place {
+            background: linear-gradient(135deg, rgba(255, 215, 0, 0.3) 0%, rgba(255, 193, 7, 0.3) 100%);
+            color: #ffd700;
+            animation: sparkle 2s ease-in-out infinite;
+        }
+
+        .rank-message.top-three {
+            background: linear-gradient(135deg, rgba(192, 192, 192, 0.3) 0%, rgba(169, 169, 169, 0.3) 100%);
+            color: #e5e5e5;
+        }
+
+        .rank-message.upper-half {
+            background: linear-gradient(135deg, rgba(52, 211, 153, 0.3) 0%, rgba(16, 185, 129, 0.3) 100%);
+            color: #a7f3d0;
+        }
+
+        .rank-message.encourage {
+            background: linear-gradient(135deg, rgba(251, 146, 60, 0.3) 0%, rgba(249, 115, 22, 0.3) 100%);
+            color: #fed7aa;
+        }
+
+        /* 반짝임 애니메이션 (1등용) */
+        @keyframes sparkle {
+            0%, 100% {
+                text-shadow: 0 0 5px rgba(255, 215, 0, 0.5);
+            }
+            50% {
+                text-shadow: 0 0 15px rgba(255, 215, 0, 0.8), 0 0 25px rgba(255, 215, 0, 0.6);
+            }
+        }
+
+        /* 총 수익 하이라이트 */
+        .total-money-highlight {
+            font-size: 1.2em;
+            font-weight: 700;
+            color: #10b981;
+            text-shadow: 0 1px 3px rgba(16, 185, 129, 0.3);
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+            padding: 2px 8px;
+            border-radius: 6px;
+            display: inline-block;
+            margin: 0 4px;
+            border: 1px solid #86efac;
+        }
+
+        /* 모바일 최적화 */
+        @media (max-width: 480px) {
+            .merchant-ranking-info {
+                padding: 16px;
+                margin-bottom: 16px;
+            }
+
+            .rank-number {
+                font-size: 2.2em;
+            }
+
+            .total-merchants {
+                font-size: 1.6em;
+            }
+
+            .rank-separator,
+            .rank-suffix {
+                font-size: 1.1em;
+            }
+            
+            .ranking-toast {
+                top: 15px;
+                max-width: 320px;
+                width: 85%;
+            }
+            
+            .toast-content {
+                padding: 14px 16px;
+                gap: 10px;
+                font-size: 0.9em;
+            }
+        }
+        /* ========== 상인 랭킹 시스템 CSS 끝 ========== */
     </style>
 </head>
 <body>
