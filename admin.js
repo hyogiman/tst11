@@ -896,6 +896,62 @@ async function revivePlayer(playerId) {
     }
 }
 
+// 징벌 히스토리 조회 (개요 화면에 간단히 표시)
+async function loadRecentPunishments() {
+    try {
+        const punishmentSnapshot = await db.collection('punishmentLogs')
+            .orderBy('punishedAt', 'desc')
+            .limit(5)
+            .get();
+        
+        if (punishmentSnapshot.empty) {
+            return;
+        }
+        
+        // 개요 화면에 최근 징벌 내역 추가 (선택사항)
+        let punishmentHtml = '<div class="card"><h3>최근 징벌 내역</h3>';
+        
+        punishmentSnapshot.forEach(doc => {
+            const data = doc.data();
+            const date = data.punishedAt ? data.punishedAt.toDate().toLocaleDateString('ko-KR') : '날짜 없음';
+            const action = data.action === 'punishment_revoked' ? '징벌 해제' : '징벌 부여';
+            
+            punishmentHtml += '<div class="list-item-subtitle">';
+            punishmentHtml += '<strong>' + data.playerName + '</strong> - ' + action;
+            punishmentHtml += '<br><small>' + (data.reason || '사유 없음') + ' (' + date + ')</small>';
+            punishmentHtml += '</div>';
+        });
+        
+        punishmentHtml += '</div>';
+        
+        // 개요 화면에 추가하려면 적절한 위치에 삽입
+        console.log('최근 징벌 내역:', punishmentHtml);
+        
+    } catch (error) {
+        console.error('징벌 히스토리 로드 오류:', error);
+    }
+}
+
+// 특정 플레이어의 징벌 히스토리 조회
+async function getPlayerPunishmentHistory(playerId) {
+    try {
+        const historySnapshot = await db.collection('punishmentLogs')
+            .where('playerId', '==', playerId)
+            .orderBy('punishedAt', 'desc')
+            .get();
+        
+        const history = [];
+        historySnapshot.forEach(doc => {
+            history.push(doc.data());
+        });
+        
+        return history;
+    } catch (error) {
+        console.error('플레이어 징벌 히스토리 조회 오류:', error);
+        return [];
+    }
+}
+
 // 공지사항 생성
 async function createNotice() {
     const title = document.getElementById('newNoticeTitle').value;
