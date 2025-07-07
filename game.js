@@ -208,7 +208,11 @@ let gameState = {
     realtimeListener: null,
     interactionMission: null, // 상호작용 미션
     secretTitle: null, // 시크릿 코드 제목
-    secretContent: null // 시크릿 코드 내용
+    secretContent: null, // 시크릿 코드 내용
+    // 랭킹 관련 추가
+    merchantRank: null,
+    totalMerchants: null,
+    merchantRankingListener: null
 };
 
 // 기본 시크릿 코드
@@ -590,7 +594,15 @@ async function completeLogin() {
     // 상호작용 카운트 업데이트 (누적 유지)
     updateInteractionCount();
     
-    setupRealtimeListener();
+setupRealtimeListener();
+    
+    // 상인인 경우 랭킹 시스템 초기화
+    if (gameState.role === 'merchant') {
+        const { rank, totalMerchants } = await calculateMerchantRanking();
+        gameState.merchantRank = rank;
+        gameState.totalMerchants = totalMerchants;
+        setupMerchantRankingListener();
+    }
     
     console.log('로그인 완료!');
 }
@@ -787,7 +799,7 @@ async function logout() {
     }
 
     try {
-        // 실시간 리스너 먼저 해제
+// 실시간 리스너들 해제
         if (gameState.realtimeListener) {
             try {
                 gameState.realtimeListener();
@@ -795,6 +807,16 @@ async function logout() {
                 console.error('리스너 해제 오류:', error);
             }
             gameState.realtimeListener = null;
+        }
+
+        // 상인 랭킹 리스너 해제
+        if (gameState.merchantRankingListener) {
+            try {
+                gameState.merchantRankingListener();
+            } catch (error) {
+                console.error('랭킹 리스너 해제 오류:', error);
+            }
+            gameState.merchantRankingListener = null;
         }
 
         // Firestore 업데이트 (로그인 상태일 때만)
@@ -805,7 +827,8 @@ async function logout() {
             });
         }
 
-        // 게임 상태 완전 초기화
+
+// 게임 상태 완전 초기화
         gameState = {
             isLoggedIn: false,
             player: null,
@@ -819,7 +842,10 @@ async function logout() {
             realtimeListener: null,
             interactionMission: null,
             secretTitle: null,
-            secretContent: null
+            secretContent: null,
+            merchantRank: null,
+            totalMerchants: null,
+            merchantRankingListener: null
         };
 
         // 헤더를 원래 상태로 복구 및 컨텐츠 원상복구
@@ -1259,14 +1285,294 @@ async function displayCriminalResults(container) {
     
     container.innerHTML = html;
 }
+// ========== 상인 랭킹 시스템 함수들 (여기서부터 추가) ==========
 
-function displayMerchantResults(container) {
+// 상인 랭킹 계산 함수
+async function calculateMerchantRanking() {
+    if (gameState.role !== 'merchant' || !gameState.isLoggedIn) {
+        return { rank: null, totalMerchants: null };
+    }
+
+    try {
+        // 모든 상인 플레이어의 수익 정보 가져오기
+        const merchantSnapshot = await db.collection('activePlayers')
+            .where('role', '==', 'merchant')
+            .where('isAlive', '==', true)
+            .get();
+
+        if (merchantSnapshot.empty) {
+            return { rank: 1, totalMerchants: 1 };
+        }
+
+        const merchants = [];
+        merchantSnapshot.forEach(doc => {
+            const data = doc.data();
+            merchants.push({
+                id: doc.id,
+                name: data.name,
+                money: data.money || 0
+            });
+        });
+
+        // 수익순으로 정렬
+        merchants.sort((a, b) => b.money - a.money);
+
+        // 내 순위 찾기
+        const myId = gameState.player.loginCode;
+        const myRank = merchants.findIndex(merchant => merchant.id === myId) + 1;
+
+        return {
+            rank: myRank,
+            totalMerchants: merchants.length
+        };
+
+    } catch (error) {
+        console.error('상인 랭킹 계산 오류:', error);
+        return { rank: null, totalMerchants: null };
+    }
+}
+
+// 랭킹 애니메이션 함수
+function animateNumber(element, startValue, endValue, duration = 1000) {
+    if (!element || startValue === endValue) {
+        if (element) element.textContent = endValue;
+        return;
+    }
+
+    const startTime = performance.now();
+    const difference = endValue - startValue;
+
+    function updateNumber(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // easeOutCubic 애니메이션
+        const easeProgress = 1 - Math.pow(1 - progress, 3);
+        const currentValue = Math.round(startValue + (difference * easeProgress));
+        
+        element.textContent = currentValue;
+        
+        if (progress < 1) {
+            requestAnimationFrame(updateNumber);
+        }
+    }
+    
+    requestAnimationFrame(updateNumber);
+}
+
+// 상인 랭킹 실시간 리스너 설정
+function setupMerchantRankingListener() {
+    if (gameState.role !== 'merchant' || !gameState.isLoggedIn) {
+        return;
+    }
+
+    // 기존 리스너가 있다면 해제
+    if (gameState.merchantRankingListener) {
+        try {
+            gameState.merchantRankingListener();
+        } catch (error) {
+            console.error('기존 랭킹 리스너 해제 오류:', error);
+        }
+        gameState.merchantRankingListener = null;
+    }
+
+    // 상인 플레이어들의 변경사항을 실시간으로 감지
+    gameState.merchantRankingListener = db.collection('activePlayers')
+        .where('role', '==', 'merchant')
+        .where('isAlive', '==', true)
+        .onSnapshot(async function(snapshot) {
+            if (!gameState.isLoggedIn || gameState.role !== 'merchant') {
+                return;
+            }
+
+            const { rank, totalMerchants } = await calculateMerchantRanking();
+            
+            // 이전 랭킹과 비교하여 애니메이션 적용
+            const prevRank = gameState.merchantRank;
+            const prevTotal = gameState.totalMerchants;
+            
+            gameState.merchantRank = rank;
+            gameState.totalMerchants = totalMerchants;
+            
+            // UI 업데이트
+            updateMerchantRankingUI(prevRank, prevTotal);
+        });
+}
+
+// 상인 랭킹 UI 업데이트
+function updateMerchantRankingUI(prevRank, prevTotal) {
+    if (gameState.role !== 'merchant') {
+        return;
+    }
+
+    const rankElement = document.getElementById('merchantRank');
+    const totalElement = document.getElementById('merchantTotal');
+    
+    if (rankElement && gameState.merchantRank) {
+        if (prevRank && prevRank !== gameState.merchantRank) {
+            // 순위가 향상된 경우
+            if (prevRank > gameState.merchantRank) {
+                rankElement.classList.add('rank-up');
+                showRankingToast('순위가 상승했습니다! ' + prevRank + '위 → ' + gameState.merchantRank + '위', 'success');
+                
+                // 순위 향상 효과음
+                playRankUpSound();
+                
+                setTimeout(() => {
+                    rankElement.classList.remove('rank-up');
+                }, 1000);
+            } 
+            // 순위가 하락한 경우
+            else if (prevRank < gameState.merchantRank) {
+                rankElement.classList.add('rank-down');
+                showRankingToast('순위가 하락했습니다. ' + prevRank + '위 → ' + gameState.merchantRank + '위', 'warning');
+                
+                setTimeout(() => {
+                    rankElement.classList.remove('rank-down');
+                }, 800);
+            }
+            
+            // 숫자 애니메이션
+            animateNumber(rankElement, prevRank, gameState.merchantRank, 800);
+        } else {
+            rankElement.textContent = gameState.merchantRank;
+        }
+    }
+    
+    if (totalElement && gameState.totalMerchants) {
+        if (prevTotal && prevTotal !== gameState.totalMerchants) {
+            // 전체 상인 수 변경 애니메이션
+            totalElement.classList.add('updating');
+            animateNumber(totalElement, prevTotal, gameState.totalMerchants, 600);
+            
+            setTimeout(() => {
+                totalElement.classList.remove('updating');
+            }, 600);
+        } else {
+            totalElement.textContent = gameState.totalMerchants;
+        }
+    }
+}
+
+// 랭킹 토스트 메시지 표시
+function showRankingToast(message, type = 'info') {
+    // 기존 토스트가 있으면 제거
+    const existingToast = document.querySelector('.ranking-toast');
+    if (existingToast) {
+        existingToast.remove();
+    }
+
+    const toast = document.createElement('div');
+    toast.className = 'ranking-toast ranking-toast-' + type;
+    toast.innerHTML = '<div class="toast-content">' +
+                     '<span class="toast-icon">' + getToastIcon(type) + '</span>' +
+                     '<span class="toast-message">' + message + '</span>' +
+                     '</div>';
+
+    document.body.appendChild(toast);
+
+    // 애니메이션으로 표시
+    setTimeout(() => {
+        toast.classList.add('show');
+    }, 100);
+
+    // 3초 후 자동 제거
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => {
+            if (toast.parentNode) {
+                toast.remove();
+            }
+        }, 300);
+    }, 3000);
+}
+
+// 토스트 아이콘 반환
+function getToastIcon(type) {
+    switch (type) {
+        case 'success': return '🎉';
+        case 'warning': return '⚠️';
+        case 'info': return 'ℹ️';
+        default: return '📊';
+    }
+}
+
+// 순위 향상 효과음
+function playRankUpSound() {
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // 간단한 성공 사운드 생성
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+        
+        oscillator.frequency.setValueAtTime(523.25, audioContext.currentTime); // C5
+        oscillator.frequency.setValueAtTime(659.25, audioContext.currentTime + 0.1); // E5
+        oscillator.frequency.setValueAtTime(783.99, audioContext.currentTime + 0.2); // G5
+        
+        gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+        
+        oscillator.start(audioContext.currentTime);
+        oscillator.stop(audioContext.currentTime + 0.3);
+    } catch (error) {
+        // 오디오 재생 실패 시 무시
+        console.log('오디오 재생 실패:', error);
+    }
+}
+
+// ========== 상인 랭킹 시스템 함수들 끝 ==========
+// 상인 결과 화면에 실시간 랭킹 정보 표시
+async function displayMerchantResults(container) {
     const transactions = gameState.results.filter(function(r) { 
         return r.type === 'money'; 
     });
     
     let html = '';
     let totalMoney = 0;
+
+    // 실시간 랭킹 정보 가져오기 (최신 데이터)
+    if (gameState.role === 'merchant') {
+        // 랭킹 정보가 없으면 다시 계산
+        if (!gameState.merchantRank || !gameState.totalMerchants) {
+            const { rank, totalMerchants } = await calculateMerchantRanking();
+            gameState.merchantRank = rank;
+            gameState.totalMerchants = totalMerchants;
+        }
+
+        html += '<div class="merchant-ranking-info">';
+        if (gameState.merchantRank && gameState.totalMerchants) {
+            html += '<div class="ranking-display">';
+            html += '<div class="rank-title">실시간 순위</div>';
+            html += '<div class="rank-numbers">';
+            html += '<span id="merchantRank" class="rank-number">' + gameState.merchantRank + '</span>';
+            html += '<span class="rank-separator">위 / </span>';
+            html += '<span id="merchantTotal" class="total-merchants">' + gameState.totalMerchants + '</span>';
+            html += '<span class="rank-suffix">명</span>';
+            html += '</div>';
+            
+            // 순위별 특별 메시지
+            if (gameState.merchantRank === 1) {
+                html += '<div class="rank-message first-place">🏆 최고의 상인입니다!</div>';
+            } else if (gameState.merchantRank <= 3) {
+                html += '<div class="rank-message top-three">🥇 상위권 진입!</div>';
+            } else if (gameState.merchantRank <= Math.ceil(gameState.totalMerchants / 2)) {
+                html += '<div class="rank-message upper-half">📈 상위 절반 유지</div>';
+            } else {
+                html += '<div class="rank-message encourage">💪 더 노력해보세요!</div>';
+            }
+            
+            html += '</div>';
+        } else {
+            html += '<div class="ranking-display loading">';
+            html += '<div class="rank-title">순위 계산 중...</div>';
+            html += '</div>';
+        }
+        html += '</div>';
+    }
 
     if (transactions.length === 0) {
         html += '<p style="text-align: center; color: #666;">아직 거래 기록이 없습니다.</p>';
@@ -1284,7 +1590,7 @@ function displayMerchantResults(container) {
     }
     
     // 총 수익을 맨 위에 표시
-    const finalHtml = '<div class="status-message">총 수익: ' + totalMoney + '원</div>' + html;
+    const finalHtml = '<div class="status-message">총 수익: <span class="total-money-highlight">' + totalMoney.toLocaleString() + '</span>원</div>' + html;
     
     container.innerHTML = finalHtml;
 }
