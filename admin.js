@@ -78,7 +78,7 @@ function showScreen(screenName) {
     
     adminState.currentScreen = screenName;
     
-    // 화면별 데이터 로드
+// 화면별 데이터 로드
     switch (screenName) {
         case 'overview':
             loadOverviewData();
@@ -88,6 +88,9 @@ function showScreen(screenName) {
             break;
         case 'playerManage':
             loadPlayersData();
+            break;
+        case 'merchantRanking':  // 새로 추가
+            loadMerchantRankingData();
             break;
         case 'notices':
             loadNoticesData();
@@ -925,7 +928,147 @@ function showAlert(message, type) {
         }
     }, 3000);
 }
+// ========== 상인 랭킹 관리 함수들 (여기서부터 추가) ==========
 
+// 상인 랭킹 데이터 로드 함수
+async function loadMerchantRankingData() {
+    try {
+        // 모든 상인 플레이어 데이터 가져오기
+        const merchantSnapshot = await db.collection('activePlayers')
+            .where('role', '==', 'merchant')
+            .get();
+        
+        // 등록된 사용자 정보도 함께 가져오기
+        const registeredSnapshot = await db.collection('registeredUsers')
+            .where('role', '==', 'merchant')
+            .get();
+        
+        // 등록된 사용자 정보를 맵으로 변환
+        const registeredUsers = {};
+        registeredSnapshot.forEach(doc => {
+            registeredUsers[doc.id] = doc.data();
+        });
+
+        const merchants = [];
+        let totalEarnings = 0;
+        let maxEarnings = 0;
+        let activeCount = 0;
+
+        merchantSnapshot.forEach(doc => {
+            const activeData = doc.data();
+            const registeredData = registeredUsers[doc.id];
+            
+            if (registeredData) {
+                const money = activeData.money || 0;
+                const transactionCount = activeData.results ? 
+                    activeData.results.filter(r => r.type === 'money').length : 0;
+                
+                merchants.push({
+                    id: doc.id,
+                    name: registeredData.name,
+                    position: registeredData.position,
+                    money: money,
+                    transactionCount: transactionCount,
+                    isAlive: activeData.isAlive || false,
+                    isActive: activeData.isActive || false
+                });
+
+                if (activeData.isAlive) {
+                    totalEarnings += money;
+                    maxEarnings = Math.max(maxEarnings, money);
+                    activeCount++;
+                }
+            }
+        });
+
+        // 수익순으로 정렬
+        merchants.sort((a, b) => b.money - a.money);
+
+        // 통계 정보 업데이트
+        updateMerchantStats(merchants.length, totalEarnings, maxEarnings, activeCount);
+
+        // 테이블 업데이트
+        updateMerchantRankingTable(merchants);
+
+    } catch (error) {
+        console.error('상인 랭킹 데이터 로드 오류:', error);
+        showAlert('상인 랭킹 데이터 로드 중 오류가 발생했습니다.', 'error');
+    }
+}
+
+// 상인 통계 정보 업데이트
+function updateMerchantStats(totalCount, totalEarnings, maxEarnings, activeCount) {
+    document.getElementById('totalMerchantsCount').textContent = totalCount;
+    
+    const averageEarnings = activeCount > 0 ? Math.round(totalEarnings / activeCount) : 0;
+    document.getElementById('averageEarnings').textContent = averageEarnings.toLocaleString();
+    document.getElementById('topEarnings').textContent = maxEarnings.toLocaleString();
+}
+
+// 상인 랭킹 테이블 업데이트
+function updateMerchantRankingTable(merchants) {
+    const tbody = document.getElementById('merchantRankingTable');
+    tbody.innerHTML = '';
+
+    if (merchants.length === 0) {
+        const row = tbody.insertRow();
+        row.innerHTML = '<td colspan="6" style="text-align: center; color: #666; padding: 20px;">등록된 상인이 없습니다.</td>';
+        return;
+    }
+
+    merchants.forEach((merchant, index) => {
+        const row = tbody.insertRow();
+        
+        // 순위
+        const rank = index + 1;
+        let rankDisplay = rank;
+        let rankClass = '';
+        
+        if (rank === 1) {
+            rankDisplay = '🥇 ' + rank;
+            rankClass = 'rank-first';
+        } else if (rank === 2) {
+            rankDisplay = '🥈 ' + rank;
+            rankClass = 'rank-second';
+        } else if (rank === 3) {
+            rankDisplay = '🥉 ' + rank;
+            rankClass = 'rank-third';
+        }
+
+        // 상태 표시
+        let statusText = '';
+        let statusClass = '';
+        
+        if (merchant.isAlive) {
+            if (merchant.isActive) {
+                statusText = '접속중';
+                statusClass = 'status-online';
+            } else {
+                statusText = '생존';
+                statusClass = 'status-alive';
+            }
+        } else {
+            statusText = '사망';
+            statusClass = 'status-dead';
+        }
+
+        let html = '<td><span class="' + rankClass + '">' + rankDisplay + '</span></td>';
+        html += '<td><strong>' + merchant.name + '</strong></td>';
+        html += '<td>' + merchant.position + '</td>';
+        html += '<td><span class="money-amount">' + merchant.money.toLocaleString() + '원</span></td>';
+        html += '<td>' + merchant.transactionCount + '회</td>';
+        html += '<td><span class="' + statusClass + '">' + statusText + '</span></td>';
+        
+        row.innerHTML = html;
+        
+        // 순위별 특별 스타일 적용
+        if (rankClass) {
+            row.classList.add(rankClass);
+        }
+    });
+}
+
+// ========== 상인 랭킹 관리 함수들 끝 ==========
 // 실시간 데이터 감지 설정
 function setupRealtimeListeners() {
     db.collection('gameSettings').doc('gameStatus')
@@ -943,6 +1086,9 @@ function setupRealtimeListeners() {
             }
             if (adminState.currentScreen === 'overview') {
                 loadOverviewData();
+            }
+            if (adminState.currentScreen === 'merchantRanking') {
+                loadMerchantRankingData();
             }
         });
 }
@@ -969,6 +1115,10 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     document.getElementById('playerManageNavBtn').addEventListener('click', function() {
         showScreen('playerManage');
+    });
+    // 상인 랭킹 네비게이션 버튼 추가
+    document.getElementById('merchantRankingNavBtn').addEventListener('click', function() {
+        showScreen('merchantRanking');
     });
     document.getElementById('noticesNavBtn').addEventListener('click', function() {
         showScreen('notices');
