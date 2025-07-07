@@ -608,7 +608,9 @@ async function loadPlayersData() {
     }
 }
 
-// 플레이어 상세 정보 보기
+// admin.js에서 기존 showPlayerDetail 함수를 다음 코드로 교체하세요
+
+// 플레이어 상세 정보 보기 (징벌 히스토리 포함)
 async function showPlayerDetail(playerId) {
     try {
         const userDoc = await db.collection('registeredUsers').doc(playerId).get();
@@ -648,8 +650,55 @@ async function showPlayerDetail(playerId) {
         html += '<p><strong>상태:</strong> ' + statusText + '</p>';
         html += '</div>';
 
+        // 🆕 징벌 히스토리 섹션 추가
+        const punishmentHistory = await getPlayerPunishmentHistory(playerId);
+        if (punishmentHistory.length > 0) {
+            html += '<div class="player-detail">';
+            html += '<h3>⚡ 징벌 히스토리 (' + punishmentHistory.length + '건)</h3>';
+            
+            punishmentHistory.forEach(function(record, index) {
+                const timeText = record.punishedAt ? 
+                    record.punishedAt.toDate().toLocaleString('ko-KR') : 
+                    (record.revokedAt ? record.revokedAt.toDate().toLocaleString('ko-KR') : '날짜 없음');
+                
+                let actionText = '';
+                let actionColor = '#666';
+                let actionIcon = '';
+                
+                if (record.adminAction === 'punishment_death') {
+                    actionText = '징벌 부여';
+                    actionColor = '#dc2626';
+                    actionIcon = '⚡';
+                } else if (record.action === 'punishment_revoked') {
+                    actionText = '징벌 해제';
+                    actionColor = '#059669';
+                    actionIcon = '✅';
+                }
+                
+                html += '<div class="activity-item" style="border-left: 3px solid ' + actionColor + ';">';
+                html += '<div style="color: ' + actionColor + '; font-weight: 600; margin-bottom: 4px;">';
+                html += actionIcon + ' ' + actionText;
+                html += '</div>';
+                html += '<div style="font-size: 13px; color: #4b5563; margin-bottom: 4px;">';
+                html += '<strong>사유:</strong> ' + (record.reason || '사유 없음');
+                html += '</div>';
+                html += '<div class="activity-time">' + timeText + '</div>';
+                html += '<div style="font-size: 12px; color: #9ca3af;">관리자: ' + (record.punishedBy || record.revokedBy || 'admin') + '</div>';
+                html += '</div>';
+            });
+            
+            html += '</div>';
+        } else {
+            // 징벌 히스토리가 없는 경우에도 섹션 표시
+            html += '<div class="player-detail">';
+            html += '<h3>⚡ 징벌 히스토리</h3>';
+            html += '<p style="color: #6b7280; font-style: italic;">징벌 기록이 없습니다.</p>';
+            html += '</div>';
+        }
+
+        // 기존 활동 기록 섹션
         if (activeData && activeData.results && activeData.results.length > 0) {
-            html += '<div class="player-detail"><h3>활동 기록 (' + activeData.results.length + '개)</h3>';
+            html += '<div class="player-detail"><h3>게임 활동 기록 (' + activeData.results.length + '개)</h3>';
 
             activeData.results.forEach(function(result, index) {
                 let actionText = '';
@@ -686,16 +735,17 @@ async function showPlayerDetail(playerId) {
             html += '</div>';
         }
 
+        // 역할별 추가 정보
         if (activeData && userData.role === 'merchant' && activeData.money) {
             html += '<div class="player-detail">';
-            html += '<h3>수익 현황</h3>';
-            html += '<p><strong>총 수익:</strong> ' + activeData.money + '원</p>';
+            html += '<h3>💰 수익 현황</h3>';
+            html += '<p><strong>총 수익:</strong> ' + activeData.money.toLocaleString() + '원</p>';
             html += '</div>';
         }
 
         if (activeData && userData.role === 'criminal' && activeData.killCount) {
             html += '<div class="player-detail">';
-            html += '<h3>제거 현황</h3>';
+            html += '<h3>🔪 제거 현황</h3>';
             html += '<p><strong>제거 횟수:</strong> ' + activeData.killCount + '/3회</p>';
             html += '</div>';
         }
