@@ -569,6 +569,36 @@
         }
         
         /* ========== 징벌 기능 CSS 끝 ========== */
+        /* 플레이어 상세 화면 징벌 히스토리 스타일 */
+.activity-item {
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 8px;
+    margin-bottom: 10px;
+    font-size: 14px;
+    transition: all 0.3s ease;
+    border-left: 3px solid #e9ecef;
+}
+
+.activity-item:hover {
+    background: #f1f3f4;
+    transform: translateX(2px);
+}
+
+.activity-time {
+    color: #6c757d;
+    font-size: 12px;
+    margin-top: 4px;
+}
+
+/* 징벌 관련 활동 아이템 특별 스타일 */
+.activity-item[style*="border-left: 3px solid #dc2626"] {
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+}
+
+.activity-item[style*="border-left: 3px solid #059669"] {
+    background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+}
     </style>
 </head>
 <body>
