@@ -1399,7 +1399,7 @@ function setupMerchantRankingListener() {
         });
 }
 
-// 상인 랭킹 UI 업데이트
+// 상인 랭킹 UI 업데이트 (순위 메시지도 실시간 업데이트)
 function updateMerchantRankingUI(prevRank, prevTotal) {
     if (gameState.role !== 'merchant') {
         return;
@@ -1452,6 +1452,53 @@ function updateMerchantRankingUI(prevRank, prevTotal) {
             totalElement.textContent = gameState.totalMerchants;
         }
     }
+    
+    // 🆕 순위 메시지 실시간 업데이트 추가
+    updateRankMessage();
+}
+
+// 🆕 순위 메시지를 실시간으로 업데이트하는 새로운 함수
+function updateRankMessage() {
+    if (gameState.role !== 'merchant' || !gameState.merchantRank || !gameState.totalMerchants) {
+        return;
+    }
+    
+    const rankMessageElement = document.querySelector('.rank-message');
+    if (!rankMessageElement) {
+        return;
+    }
+    
+    // 기존 클래스 제거
+    rankMessageElement.classList.remove('first-place', 'top-three', 'upper-half', 'encourage');
+    
+    // 순위에 따른 새로운 메시지와 클래스 설정
+    let newMessage = '';
+    let newClass = '';
+    
+    if (gameState.merchantRank === 1) {
+        newMessage = '🏆 최고의 상인입니다!';
+        newClass = 'first-place';
+    } else if (gameState.merchantRank <= 3) {
+        newMessage = '🥇 상위권 진입!';
+        newClass = 'top-three';
+    } else if (gameState.merchantRank <= Math.ceil(gameState.totalMerchants / 2)) {
+        newMessage = '📈 상위 절반 유지';
+        newClass = 'upper-half';
+    } else {
+        newMessage = '💪 더 노력해보세요!';
+        newClass = 'encourage';
+    }
+    
+    // 메시지 변경 시 부드러운 애니메이션
+    rankMessageElement.style.opacity = '0';
+    rankMessageElement.style.transform = 'translateY(10px)';
+    
+    setTimeout(() => {
+        rankMessageElement.textContent = newMessage;
+        rankMessageElement.classList.add(newClass);
+        rankMessageElement.style.opacity = '1';
+        rankMessageElement.style.transform = 'translateY(0)';
+    }, 200);
 }
 
 // 랭킹 토스트 메시지 표시
