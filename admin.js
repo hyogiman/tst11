@@ -535,12 +535,14 @@ async function loadPlayersData() {
             let statusText = '';
             let statusClass = '';
             let showReviveButton = false;
+            let showPunishButton = false;
             
             if (activeData) {
                 if (activeData.isActive) {
                     if (activeData.isAlive) {
                         statusText = '생존';
                         statusClass = 'status-alive';
+                        showPunishButton = true; // 생존 상태일 때만 징벌 가능
                     } else {
                         statusText = '사망';
                         statusClass = 'status-dead';
@@ -550,6 +552,7 @@ async function loadPlayersData() {
                     if (activeData.isAlive) {
                         statusText = '미접속';
                         statusClass = '';
+                        showPunishButton = true; // 미접속이지만 생존 상태면 징벌 가능
                     } else {
                         statusText = '사망(미접속)';
                         statusClass = 'status-dead';
@@ -559,6 +562,7 @@ async function loadPlayersData() {
             } else {
                 statusText = '미접속';
                 statusClass = '';
+                // activeData가 없으면 징벌 불가 (아직 게임에 참여하지 않음)
             }
 
             const roleNames = {
@@ -583,11 +587,19 @@ async function loadPlayersData() {
             html += ';">' + statusText + '</span>';
             html += '</td>';
             html += '<td>';
-            html += '<button class="btn secondary" onclick="showPlayerDetail(\'' + doc.id + '\')" style="width: auto; padding: 5px 10px; font-size: 12px;">상세</button>';
-            html += '<button class="btn danger" onclick="deletePlayer(\'' + doc.id + '\')" style="width: auto; padding: 5px 10px; font-size: 12px;">삭제</button>';
-            if (showReviveButton) {
-                html += '<button class="btn success" onclick="revivePlayer(\'' + doc.id + '\')" style="width: auto; padding: 5px 10px; font-size: 12px;">부활</button>';
+            html += '<button class="btn secondary" onclick="showPlayerDetail(\'' + doc.id + '\')" style="width: auto; padding: 5px 10px; font-size: 12px; margin-right: 5px;">상세</button>';
+            
+            // 🆕 징벌 버튼 추가 (생존 상태일 때만)
+            if (showPunishButton) {
+                html += '<button class="btn punish" onclick="punishPlayer(\'' + doc.id + '\', \'' + userData.name + '\')" style="width: auto; padding: 5px 10px; font-size: 12px; margin-right: 5px;">징벌</button>';
             }
+            
+            // 부활 버튼 (사망 상태일 때만)
+            if (showReviveButton) {
+                html += '<button class="btn success" onclick="revivePlayer(\'' + doc.id + '\')" style="width: auto; padding: 5px 10px; font-size: 12px; margin-right: 5px;">부활</button>';
+            }
+            
+            html += '<button class="btn danger" onclick="deletePlayer(\'' + doc.id + '\')" style="width: auto; padding: 5px 10px; font-size: 12px;">삭제</button>';
             html += '</td>';
             row.innerHTML = html;
         });
@@ -722,21 +734,121 @@ async function deletePlayer(playerId) {
         showAlert('플레이어 삭제 중 오류가 발생했습니다.', 'error');
     }
 }
-
-// 플레이어 부활
-async function revivePlayer(playerId) {
-    if (!confirm('이 플레이어를 부활시키시겠습니까?')) return;
+// 플레이어 징벌적 사망 함수
+async function punishPlayer(playerId, playerName) {
+    // 징벌 사유 입력받기
+    const reason = prompt('징벌 사유를 입력하세요 (선택사항):', '게임 규칙 위반');
+    
+    if (!confirm('정말로 ' + playerName + '을(를) 징벌적 사망시키시겠습니까?\n\n이 플레이어는 즉시 게임에서 제외되며, 재접속할 수 없게 됩니다.')) {
+        return;
+    }
 
     try {
+        const now = firebase.firestore.FieldValue.serverTimestamp();
+        
+        // activePlayers에서 플레이어 상태 업데이트
         const activePlayerDoc = await db.collection('activePlayers').doc(playerId).get();
         
         if (activePlayerDoc.exists) {
+            // 기존 플레이어 데이터에 징벌 정보 추가
             await db.collection('activePlayers').doc(playerId).update({
+                isAlive: false,
+                isActive: false, // 재접속도 차단
+                deathTime: now,
+                deathReason: 'punishment', // 징벌적 사망 표시
+                punishmentReason: reason || '게임 규칙 위반',
+                punishedBy: 'admin',
+                punishedAt: now
+            });
+        } else {
+            // activePlayers 컬렉션에 없는 경우 새로 생성 (미접속 플레이어)
+            const userDoc = await db.collection('registeredUsers').doc(playerId).get();
+            if (userDoc.exists) {
+                const userData = userDoc.data();
+                await db.collection('activePlayers').doc(playerId).set({
+                    name: userData.name,
+                    position: userData.position,
+                    role: userData.role,
+                    secretCode: userData.secretCode,
+                    isAlive: false,
+                    isActive: false,
+                    results: [],
+                    killCount: 0,
+                    money: 0,
+                    receivedInteractions: {},
+                    deathTime: now,
+                    deathReason: 'punishment',
+                    punishmentReason: reason || '게임 규칙 위반',
+                    punishedBy: 'admin',
+                    punishedAt: now
+                });
+            }
+        }
+
+        // 징벌 로그 기록
+        await db.collection('punishmentLogs').add({
+            playerId: playerId,
+            playerName: playerName,
+            reason: reason || '게임 규칙 위반',
+            punishedBy: 'admin',
+            punishedAt: now,
+            adminAction: 'punishment_death'
+        });
+
+        loadPlayersData();
+        loadOverviewData();
+        
+        // 성공 메시지
+        showAlert(playerName + '이(가) 징벌적 사망 처리되었습니다.', 'warning');
+        
+        console.log('플레이어 ' + playerId + ' 징벌적 사망 처리 완료');
+
+    } catch (error) {
+        console.error('플레이어 징벌 처리 오류:', error);
+        showAlert('플레이어 징벌 처리 중 오류가 발생했습니다.', 'error');
+    }
+}
+// 플레이어 부활 (징벌 해제 포함)
+async function revivePlayer(playerId) {
+    try {
+        // 플레이어 현재 상태 확인
+        const activePlayerDoc = await db.collection('activePlayers').doc(playerId).get();
+        let isPunished = false;
+        let playerName = '';
+        
+        if (activePlayerDoc.exists) {
+            const data = activePlayerDoc.data();
+            isPunished = data.deathReason === 'punishment';
+            playerName = data.name;
+        }
+        
+        // 징벌된 플레이어인 경우 특별 확인
+        let confirmMessage = '이 플레이어를 부활시키시겠습니까?';
+        if (isPunished) {
+            confirmMessage = '⚠️ 이 플레이어는 징벌로 인해 사망한 상태입니다.\n\n징벌을 해제하고 부활시키시겠습니까?\n(게임 재참여가 가능해집니다)';
+        }
+        
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+
+        if (activePlayerDoc.exists) {
+            const updateData = {
                 isAlive: true,
                 isActive: false,
                 revivedAt: firebase.firestore.FieldValue.serverTimestamp(),
                 revivedBy: 'admin'
-            });
+            };
+            
+            // 징벌 관련 정보 제거
+            if (isPunished) {
+                updateData.deathReason = firebase.firestore.FieldValue.delete();
+                updateData.punishmentReason = firebase.firestore.FieldValue.delete();
+                updateData.punishedBy = firebase.firestore.FieldValue.delete();
+                updateData.punishedAt = firebase.firestore.FieldValue.delete();
+            }
+            
+            await db.collection('activePlayers').doc(playerId).update(updateData);
         } else {
             const userDoc = await db.collection('registeredUsers').doc(playerId).get();
             if (userDoc.exists) {
@@ -758,9 +870,26 @@ async function revivePlayer(playerId) {
             }
         }
 
+        // 징벌 해제 로그 기록
+        if (isPunished) {
+            await db.collection('punishmentLogs').add({
+                playerId: playerId,
+                playerName: playerName,
+                action: 'punishment_revoked',
+                revokedBy: 'admin',
+                revokedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                adminAction: 'revive_punished_player'
+            });
+        }
+
         loadPlayersData();
         loadOverviewData();
-        showAlert('플레이어가 부활되었습니다. (미접속 상태)', 'success');
+        
+        const message = isPunished ? 
+            '플레이어가 부활되고 징벌이 해제되었습니다. (미접속 상태)' : 
+            '플레이어가 부활되었습니다. (미접속 상태)';
+        showAlert(message, 'success');
+        
     } catch (error) {
         console.error('플레이어 부활 오류:', error);
         showAlert('플레이어 부활 중 오류가 발생했습니다.', 'error');
