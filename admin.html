@@ -354,6 +354,178 @@
                 max-width: 100%;
             }
         }
+/* ========== 상인 랭킹 관리자 페이지 CSS (여기서부터 추가) ========== */
+        
+        /* 상인 통계 정보 */
+        .merchant-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin-top: 15px;
+        }
+
+        .merchant-stats p {
+            background: white;
+            padding: 12px 15px;
+            border-radius: 8px;
+            margin: 0;
+            border-left: 4px solid #e74c3c;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+
+        .merchant-stats strong {
+            color: #e74c3c;
+            font-size: 1.1em;
+        }
+
+        /* 랭킹 테이블 스타일 */
+        .rank-first {
+            color: #ffd700 !important;
+            font-weight: bold !important;
+            font-size: 1.1em;
+        }
+
+        .rank-second {
+            color: #c0c0c0 !important;
+            font-weight: bold !important;
+            font-size: 1.05em;
+        }
+
+        .rank-third {
+            color: #cd7f32 !important;
+            font-weight: bold !important;
+        }
+
+        /* 순위별 행 스타일 */
+        tr.rank-first {
+            background: linear-gradient(135deg, #fff9c4 0%, #fff3cd 100%) !important;
+            border-left: 4px solid #ffd700;
+        }
+
+        tr.rank-second {
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%) !important;
+            border-left: 4px solid #c0c0c0;
+        }
+
+        tr.rank-third {
+            background: linear-gradient(135deg, #fdf2e9 0%, #f4e5d3 100%) !important;
+            border-left: 4px solid #cd7f32;
+        }
+
+        /* 수익 금액 스타일 */
+        .money-amount {
+            font-weight: 600;
+            color: #27ae60;
+            font-family: 'Inter', monospace;
+        }
+
+        /* 상태 표시 스타일 */
+        .status-online {
+            color: #27ae60;
+            font-weight: 600;
+            position: relative;
+        }
+
+        .status-online::before {
+            content: '●';
+            color: #27ae60;
+            margin-right: 5px;
+            animation: pulse 2s infinite;
+        }
+
+        .status-alive {
+            color: #3498db;
+            font-weight: 600;
+        }
+
+        .status-dead {
+            color: #e74c3c;
+            font-weight: 600;
+            text-decoration: line-through;
+            opacity: 0.7;
+        }
+
+        /* 펄스 애니메이션 */
+        @keyframes pulse {
+            0% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+            100% {
+                opacity: 1;
+            }
+        }
+
+        /* 테이블 행 호버 효과 */
+        #merchantRankingTable tr:hover {
+            background: #f8f9fa !important;
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        /* 순위가 높은 행들의 호버 효과 유지 */
+        #merchantRankingTable tr.rank-first:hover {
+            background: linear-gradient(135deg, #fff9c4 0%, #ffeb3b 20%) !important;
+        }
+
+        #merchantRankingTable tr.rank-second:hover {
+            background: linear-gradient(135deg, #f8f9fa 0%, #dee2e6 20%) !important;
+        }
+
+        #merchantRankingTable tr.rank-third:hover {
+            background: linear-gradient(135deg, #fdf2e9 0%, #e6ccb3 20%) !important;
+        }
+
+        /* 네비게이션 아이템 조정 (6개로 늘어났으므로) */
+        .nav-item {
+            flex: 1;
+            background: none;
+            border: none;
+            padding: 10px 6px;
+            text-align: center;
+            cursor: pointer;
+            transition: background-color 0.3s;
+            font-size: 11px;
+            color: #666;
+        }
+
+        .nav-icon {
+            display: block;
+            font-size: 14px;
+            margin-bottom: 3px;
+        }
+
+        /* 모바일 최적화 */
+        @media (max-width: 480px) {
+            .merchant-stats {
+                grid-template-columns: 1fr;
+                gap: 10px;
+            }
+            
+            .nav-item {
+                font-size: 10px;
+                padding: 8px 4px;
+            }
+            
+            .nav-icon {
+                font-size: 12px;
+                margin-bottom: 2px;
+            }
+            
+            /* 테이블 가로 스크롤 */
+            .table-container {
+                overflow-x: auto;
+            }
+            
+            table {
+                min-width: 600px;
+            }
+        }
+        
+        /* ========== 상인 랭킹 관리자 페이지 CSS 끝 ========== */ 
     </style>
 </head>
 <body>
@@ -550,7 +722,41 @@
                 <button class="btn danger" id="logoutBtn">로그아웃</button>
             </div>
         </div>
+        
+        <!-- 상인 랭킹 화면 -->
+        <div class="screen" id="merchantRankingScreen">
+            <h2 style="margin-bottom: 20px;">💰 상인 랭킹</h2>
+            
+            <div class="card">
+                <h3>실시간 상인 순위</h3>
+                <div class="merchant-stats">
+                    <p>총 상인 수: <strong id="totalMerchantsCount">0</strong>명</p>
+                    <p>평균 수익: <strong id="averageEarnings">0</strong>원</p>
+                    <p>최고 수익: <strong id="topEarnings">0</strong>원</p>
+                </div>
+            </div>
 
+            <div class="card">
+                <h3>상인 순위표</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>순위</th>
+                                <th>이름</th>
+                                <th>직책</th>
+                                <th>수익</th>
+                                <th>거래횟수</th>
+                                <th>상태</th>
+                            </tr>
+                        </thead>
+                        <tbody id="merchantRankingTable">
+                            <!-- 상인 랭킹 데이터가 여기에 표시됩니다 -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
         <!-- 하단 네비게이션 -->
         <div class="bottom-nav" id="bottomNav" style="display: none;">
             <button class="nav-item active" id="overviewNavBtn">
@@ -564,6 +770,10 @@
             <button class="nav-item" id="playerManageNavBtn">
                 <span class="nav-icon">👥</span>
                 플레이어
+            </button>
+            <button class="nav-item" id="merchantRankingNavBtn">
+                <span class="nav-icon">💰</span>
+                상인랭킹
             </button>
             <button class="nav-item" id="noticesNavBtn">
                 <span class="nav-icon">📢</span>
