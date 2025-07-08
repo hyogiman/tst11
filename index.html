@@ -1053,6 +1053,168 @@
             }
         }
         /* ========== 상인 랭킹 시스템 CSS 끝 ========== */
+/* index.html의 <style> 태그 안에 추가할 CSS (간단한 버전) */
+
+/* ========== 탐정 단서 아코디언 스타일 (여기서부터 추가) ========== */
+
+/* 단서 리스트 컨테이너 */
+.clues-list {
+    max-height: 400px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #d1d5db transparent;
+}
+
+/* 개별 단서 아이템 */
+.clue-item {
+    background: white;
+    border-radius: 12px;
+    margin-bottom: 10px;
+    border: 1px solid #e5e7eb;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+}
+
+.clue-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    border-color: #d1d5db;
+}
+
+/* 단서 헤더 (클릭 가능한 부분) */
+.clue-header {
+    padding: 16px 20px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: white;
+    transition: background-color 0.3s ease;
+}
+
+.clue-header:hover {
+    background: #f9fafb;
+}
+
+/* 단서 제목 */
+.clue-title {
+    font-weight: 600;
+    color: #1f2937;
+    font-size: 1.05em;
+    flex: 1;
+    margin-right: 12px;
+}
+
+/* 단서 시간 */
+.clue-timestamp {
+    font-size: 0.85em;
+    color: #6b7280;
+    margin-right: 12px;
+    white-space: nowrap;
+}
+
+/* 토글 아이콘 */
+.clue-toggle {
+    color: #6b7280;
+    font-size: 0.9em;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-weight: bold;
+}
+
+.clue-item.expanded .clue-toggle {
+    transform: rotate(180deg);
+    color: #667eea;
+}
+
+/* 단서 내용 (펼쳐지는 부분) */
+.clue-content {
+    padding: 0 20px;
+    max-height: 0;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    background: #f8fafc;
+}
+
+.clue-item.expanded .clue-content {
+    max-height: 300px;
+    padding: 16px 20px 20px;
+}
+
+/* 단서 텍스트 */
+.clue-text {
+    color: #374151;
+    line-height: 1.6;
+    font-size: 0.95em;
+    margin: 0;
+    animation: fadeInUp 0.4s ease-out;
+}
+
+/* 펼쳐질 때 애니메이션 */
+@keyframes fadeInUp {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* 스크롤바 스타일링 */
+.clues-list::-webkit-scrollbar {
+    width: 4px;
+}
+
+.clues-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.clues-list::-webkit-scrollbar-thumb {
+    background: rgba(102, 126, 234, 0.3);
+    border-radius: 2px;
+}
+
+.clues-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(102, 126, 234, 0.5);
+}
+
+/* 모바일 최적화 */
+@media (max-width: 480px) {
+    .clue-header {
+        padding: 12px 16px;
+    }
+    
+    .clue-item.expanded .clue-content {
+        padding: 12px 16px 16px;
+    }
+    
+    .clue-title {
+        font-size: 1em;
+        margin-right: 8px;
+    }
+    
+    .clue-timestamp {
+        font-size: 0.8em;
+        margin-right: 8px;
+    }
+}
+
+/* 접근성 개선 - 애니메이션 줄이기 옵션 */
+@media (prefers-reduced-motion: reduce) {
+    .clue-item,
+    .clue-content,
+    .clue-toggle {
+        transition: none;
+    }
+    
+    .clue-text {
+        animation: none;
+    }
+}
+
+/* ========== 탐정 단서 아코디언 스타일 끝 ========== */    
     </style>
 </head>
 <body>
