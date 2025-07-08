@@ -516,7 +516,7 @@ async function register() {
             }, 1000);
         } else {
             // 게임이 시작되지 않은 경우 대기 메시지
-            alert('등록이 완료되었습니다! 관리자가 게임을 시작할 때까지 기다려주세요. 게임 시작 후 다시 로그인해주세요.');
+            alert('등록이 완료되었습니다! 관리자가 게임을 시작할 때까지 기다려주시고 게임 시작 후 다시 로그인해주세요.');
             
             // 폼 초기화
             document.getElementById('registerCode').value = '';
@@ -544,7 +544,7 @@ async function register() {
         
         // 로그인 코드 부족 시 특별 메시지
         if (error.message.includes('유효하지 않은')) {
-            alert('로그인 코드가 추가로 필요합니다. 관리자에게 문의하세요.');
+            alert('유효하지 않은 로그인 코드입니다. 관리자에게 문의하세요.');
         } else {
             alert(error.message);
         }
@@ -1104,14 +1104,14 @@ async function processSecretCode(targetPlayer, targetPlayerId) {
                 result.type = 'money';
                 // 역할별 차등 거래 금액
                 if (targetPlayer.role === 'merchant') {
-                    // 상인끼리: 50~100원
-                    result.amount = Math.floor(Math.random() * 51) + 50;
+                    // 상인끼리: 50~130원
+                    result.amount = Math.floor(Math.random() * 81) + 50;
                 } else if (targetPlayer.role === 'detective') {
-                    // 탐정과 거래: 90~150원
-                    result.amount = Math.floor(Math.random() * 61) + 90;
+                    // 탐정과 거래: 90~190원
+                    result.amount = Math.floor(Math.random() * 101) + 90;
                 } else if (targetPlayer.role === 'criminal') {
-                    // 범인과 거래: 200~250원
-                    result.amount = Math.floor(Math.random() * 51) + 200;
+                    // 범인과 거래: 200~300원
+                    result.amount = Math.floor(Math.random() * 101) + 200;
                 }
                 result.title = '거래 성공';
                 result.content = result.amount + '원을 획득했습니다.';
@@ -1201,7 +1201,7 @@ async function setupResultScreen() {
             displayDetectiveResults(resultContent);
             break;
         case 'criminal':
-            resultTitle.textContent = '🔪 제거 기록';
+            resultTitle.textContent = '🔪 제거 대상 및 기록';
             await displayCriminalResults(resultContent);
             break;
         case 'merchant':
