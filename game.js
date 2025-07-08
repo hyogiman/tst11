@@ -1234,13 +1234,21 @@ function displayDetectiveResults(container) {
         return;
     }
 
-    let html = '<div class="result-list">';
-    clues.forEach(function(clue) {
-        const safeContent = clue.content.replace(/'/g, "&apos;").replace(/"/g, "&quot;");
-        html += '<div class="result-item" onclick="showClueDetail(\'' + clue.title + '\', \'' + safeContent + '\')">' +
-                '<div class="result-item-title">' + clue.title + '</div>' +
-                '<div class="result-item-subtitle">' + clue.timestamp + '</div>' +
-                '</div>';
+    let html = '<div class="clues-list">';
+    clues.forEach(function(clue, index) {
+        // 각 단서마다 고유 ID 생성
+        const clueId = 'clue-' + index;
+        
+        html += '<div class="clue-item" id="' + clueId + '">';
+        html += '<div class="clue-header" onclick="toggleClue(\'' + clueId + '\')">';
+        html += '<div class="clue-title">' + clue.title + '</div>';
+        html += '<div class="clue-timestamp">' + clue.timestamp + '</div>';
+        html += '<div class="clue-toggle">▼</div>';
+        html += '</div>';
+        html += '<div class="clue-content">';
+        html += '<div class="clue-text">' + clue.content + '</div>';
+        html += '</div>';
+        html += '</div>';
     });
     html += '</div>';
     
@@ -1632,9 +1640,24 @@ async function displayMerchantResults(container) {
     container.innerHTML = finalHtml;
 }
 
-function showClueDetail(title, content) {
-    alert(title + '\n\n' + content);
+function toggleClue(clueId) {
+    // 모든 단서 접기
+    const allClues = document.querySelectorAll('.clue-item');
+    allClues.forEach(function(clue) {
+        if (clue.id !== clueId) {
+            clue.classList.remove('expanded');
+        }
+    });
+    
+    // 클릭한 단서만 토글
+    const targetClue = document.getElementById(clueId);
+    if (targetClue) {
+        targetClue.classList.toggle('expanded');
+    }
 }
+
+// 🆕 전역 스코프에 함수 등록
+window.toggleClue = toggleClue;
 
 async function executeKill(killIndex) {
     const kill = gameState.results.filter(function(r) { 
