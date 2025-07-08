@@ -778,15 +778,104 @@ function toggleNotice(noticeId) {
 function setupNoticesListener() {
     // 로그인 상태에서만 공지사항 실시간 감지
     if (gameState.isLoggedIn) {
+        let isFirstLoad = true; // 첫 로드인지 확인하는 플래그
+        
         db.collection('notices')
             .orderBy('createdAt', 'desc')
             .limit(10)
             .onSnapshot(function(snapshot) {
                 console.log('공지사항 업데이트 감지');
+                
+                // 첫 로드가 아닌 경우에만 신규 공지사항 알림
+                if (!isFirstLoad) {
+                    // 변경된 문서들 확인
+                    snapshot.docChanges().forEach(function(change) {
+                        if (change.type === 'added') {
+                            const newNotice = change.doc.data();
+                            
+                            // 새로운 공지사항 알림
+                            showNoticeAlert(newNotice.title, newNotice.content);
+                            
+                            console.log('새로운 공지사항 알림:', newNotice.title);
+                        }
+                    });
+                }
+                
+                // 공지사항 목록 업데이트
                 loadNotices();
+                
+                // 첫 로드 완료 표시
+                isFirstLoad = false;
             });
     }
 }
+
+// 🆕 공지사항 알림 표시 함수
+function showNoticeAlert(title, content) {
+    // 기존 공지사항 알림이 있으면 제거
+    const existingAlert = document.querySelector('.notice-alert');
+    if (existingAlert) {
+        existingAlert.remove();
+    }
+
+    // 알림 요소 생성
+    const alert = document.createElement('div');
+    alert.className = 'notice-alert';
+    alert.innerHTML = 
+        '<div class="notice-alert-content">' +
+        '<div class="notice-alert-header">' +
+        '<span class="notice-alert-icon">📢</span>' +
+        '<span class="notice-alert-title">새로운 공지사항</span>' +
+        '<button class="notice-alert-close" onclick="closeNoticeAlert()">&times;</button>' +
+        '</div>' +
+        '<div class="notice-alert-body">' +
+        '<div class="notice-alert-subject">' + title + '</div>' +
+        '<div class="notice-alert-text">' + content + '</div>' +
+        '</div>' +
+        '<div class="notice-alert-actions">' +
+        '<button class="notice-alert-btn confirm" onclick="goToNotices()">공지사항 보기</button>' +
+        '<button class="notice-alert-btn dismiss" onclick="closeNoticeAlert()">확인</button>' +
+        '</div>' +
+        '</div>';
+
+    // 페이지에 추가
+    document.body.appendChild(alert);
+
+    // 애니메이션으로 표시
+    setTimeout(() => {
+        alert.classList.add('show');
+    }, 100);
+
+    // 10초 후 자동 제거
+    setTimeout(() => {
+        if (alert.parentNode) {
+            closeNoticeAlert();
+        }
+    }, 10000);
+}
+
+// 🆕 공지사항 알림 닫기 함수
+function closeNoticeAlert() {
+    const alert = document.querySelector('.notice-alert');
+    if (alert) {
+        alert.classList.remove('show');
+        setTimeout(() => {
+            if (alert.parentNode) {
+                alert.remove();
+            }
+        }, 300);
+    }
+}
+
+// 🆕 공지사항 화면으로 이동 함수
+function goToNotices() {
+    closeNoticeAlert();
+    showScreen('home'); // 홈 화면으로 이동 (공지사항이 홈에 있음)
+}
+
+// 🆕 전역 스코프에 함수들 등록
+window.closeNoticeAlert = closeNoticeAlert;
+window.goToNotices = goToNotices;
 
 // 폼 전환 함수들
 function showRegisterForm() {
