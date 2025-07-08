@@ -105,7 +105,13 @@ function setupRealtimeListener() {
                             deathTimer: null,
                             usedCodes: [],
                             receivedInteractions: {},
-                            realtimeListener: null
+                            realtimeListener: null,
+                            interactionMission: null,
+                            secretTitle: null,
+                            secretContent: null,
+                            merchantRank: null,
+                            totalMerchants: null,
+                            merchantRankingListener: null
                         };
                         
                         alert('게임에서 제외되었습니다. 다시 접속할 수 없습니다.');
