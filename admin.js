@@ -761,24 +761,40 @@ async function showPlayerDetail(playerId) {
     }
 }
 
-// 플레이어 삭제
+// 플레이어 삭제 (로그인 코드 재사용 가능)
 async function deletePlayer(playerId) {
-    if (!confirm('정말 이 플레이어를 삭제하시겠습니까? 모든 데이터가 영구적으로 삭제됩니다.')) return;
+    if (!confirm('정말 이 플레이어를 삭제하시겠습니까?\n\n⚠️ 모든 데이터가 영구적으로 삭제되지만, 로그인 코드는 다시 사용할 수 있게 됩니다.')) return;
 
     try {
         const batch = db.batch();
         
+        // 1. registeredUsers에서 플레이어 삭제
         const userRef = db.collection('registeredUsers').doc(playerId);
         batch.delete(userRef);
         
+        // 2. activePlayers에서 플레이어 삭제
         const activeRef = db.collection('activePlayers').doc(playerId);
         batch.delete(activeRef);
 
+        // 🆕 3. loginCodes에서 사용 상태 초기화 (재사용 가능하게)
+        const loginCodeRef = db.collection('loginCodes').doc(playerId);
+        batch.update(loginCodeRef, {
+            used: false,
+            usedBy: firebase.firestore.FieldValue.delete(),
+            usedAt: firebase.firestore.FieldValue.delete(),
+            // 기존 role, secretCode 등은 그대로 유지
+            resetAt: firebase.firestore.FieldValue.serverTimestamp(),
+            resetBy: 'admin'
+        });
+
         await batch.commit();
 
-        showAlert('플레이어가 삭제되었습니다.', 'success');
+        showAlert('플레이어가 삭제되었습니다. 로그인 코드는 다시 사용할 수 있습니다.', 'success');
         loadPlayersData();
         loadOverviewData();
+        
+        console.log('플레이어 ' + playerId + ' 삭제 완료 - 로그인 코드 재사용 가능');
+        
     } catch (error) {
         console.error('플레이어 삭제 오류:', error);
         showAlert('플레이어 삭제 중 오류가 발생했습니다.', 'error');
