@@ -65,6 +65,9 @@ function setupRealtimeListener() {
                     if (gameState.isAlive && gameState.isLoggedIn) {
                         console.log('관리자나 범인에 의해 게임에서 제외됩니다.');
                         
+                // 🆕 징벌/제거 진동
+                triggerVibrationPattern('error');
+                        
                         // 실시간 리스너 즉시 해제
                         if (gameState.realtimeListener) {
                             try {
@@ -810,8 +813,11 @@ function setupNoticesListener() {
     }
 }
 
-// 🆕 공지사항 알림 표시 함수
-function showNoticeAlert(title, content) {
+// 🆕 공지사항 알림 표시 함수 (진동 기능 포함)
+function showNoticeAlert(title, content, onCloseCallback) {
+    // 🆕 휴대폰 진동 발생 (공지사항 특별 패턴)
+    triggerNotificationVibration();
+    
     // 기존 공지사항 알림이 있으면 제거
     const existingAlert = document.querySelector('.notice-alert');
     if (existingAlert) {
@@ -841,6 +847,11 @@ function showNoticeAlert(title, content) {
     // 페이지에 추가
     document.body.appendChild(alert);
 
+    // 콜백 함수 저장 (닫기 시 호출하기 위해)
+    if (onCloseCallback) {
+        alert._onCloseCallback = onCloseCallback;
+    }
+
     // 애니메이션으로 표시
     setTimeout(() => {
         alert.classList.add('show');
@@ -853,6 +864,69 @@ function showNoticeAlert(title, content) {
         }
     }, 10000);
 }
+
+// 🆕 공지사항 전용 진동 패턴 함수
+function triggerNotificationVibration() {
+    // 진동 API 지원 여부 확인
+    if ('vibrate' in navigator) {
+        try {
+            // 공지사항 전용 진동 패턴 (짧게-길게-짧게-길게)
+            // [진동시간, 쉬는시간, 진동시간, 쉬는시간, ...]
+            const notificationPattern = [200, 100, 300, 100, 200, 100, 300];
+            
+            navigator.vibrate(notificationPattern);
+            console.log('📱 공지사항 진동 실행');
+            
+        } catch (error) {
+            console.log('진동 실행 실패:', error);
+        }
+    } else {
+        console.log('이 기기는 진동을 지원하지 않습니다');
+    }
+}
+
+// 🆕 다양한 진동 패턴 함수들 (추가 기능)
+function triggerVibrationPattern(type) {
+    if ('vibrate' in navigator) {
+        let pattern = [];
+        
+        switch (type) {
+            case 'notification':
+                // 공지사항: 짧게-길게-짧게-길게
+                pattern = [200, 100, 300, 100, 200, 100, 300];
+                break;
+            case 'alert':
+                // 경고: 길게 3번
+                pattern = [500, 200, 500, 200, 500];
+                break;
+            case 'success':
+                // 성공: 짧게 2번
+                pattern = [100, 100, 100];
+                break;
+            case 'error':
+                // 오류: 매우 길게 1번
+                pattern = [1000];
+                break;
+            case 'rank-up':
+                // 순위 상승: 빠르게 여러 번
+                pattern = [50, 50, 50, 50, 50, 50, 50, 100, 200];
+                break;
+            default:
+                // 기본: 한 번만
+                pattern = [200];
+        }
+        
+        try {
+            navigator.vibrate(pattern);
+            console.log('📱 ' + type + ' 진동 실행');
+        } catch (error) {
+            console.log('진동 실행 실패:', error);
+        }
+    }
+}
+
+// 🆕 전역 스코프에 함수 등록
+window.triggerVibrationPattern = triggerVibrationPattern;
 
 // 🆕 공지사항 알림 닫기 함수
 function closeNoticeAlert() {
@@ -1209,6 +1283,13 @@ async function processSecretCode(targetPlayer, targetPlayerId) {
                 await db.collection('activePlayers').doc(myPlayerId).update({
                     money: currentMoney + result.amount
                 });
+                
+                 // 🆕 거래 성공 진동 (거래 금액에 따라 다른 패턴)
+                if (result.amount >= 200) {
+                    triggerVibrationPattern('success'); // 고액 거래
+                } else {
+                    triggerVibrationPattern('notification'); // 일반 거래
+                }
                 break;
         }
 
@@ -1311,6 +1392,8 @@ function displayCodeResult(result) {
                '<strong>' + result.title + '</strong><br>' +
                result.content + '</div>';
     resultDiv.innerHTML = html;
+        // 🆕 시크릿 코드 성공 진동
+    triggerVibrationPattern('success');
 }
 
 function displayDetectiveResults(container) {
@@ -1516,6 +1599,8 @@ function updateMerchantRankingUI(prevRank, prevTotal) {
                 rankElement.classList.add('rank-up');
                 showRankingToast('순위가 상승했습니다! ' + prevRank + '위 → ' + gameState.merchantRank + '위', 'success');
                 
+                // 🆕 순위 상승 진동 추가
+                triggerVibrationPattern('rank-up');                
                 // 순위 향상 효과음
                 playRankUpSound();
                 
@@ -1815,6 +1900,10 @@ async function executeKill(killIndex) {
         }, killTimer * 1000);
 
         alert('제거 명령이 실행되었습니다. ' + timeText + ' 후 대상이 게임에서 제외됩니다.');
+        
+        // 🆕 공격 성공 진동
+        triggerVibrationPattern('alert');       
+        
         setupResultScreen().catch(function(error) {
             console.error('결과 화면 새로고침 오류:', error);
         });
