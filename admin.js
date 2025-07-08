@@ -1013,6 +1013,7 @@ async function createNotice() {
     }
 
     try {
+        // 공지사항 등록 (createdAt으로 정렬되므로 최신 공지가 먼저 감지됨)
         await db.collection('notices').add({
             title: title,
             content: content,
@@ -1020,11 +1021,15 @@ async function createNotice() {
             createdBy: 'admin'
         });
 
+        // 입력 필드 초기화
         document.getElementById('newNoticeTitle').value = '';
         document.getElementById('newNoticeContent').value = '';
 
-        showAlert('공지사항이 등록되었습니다.', 'success');
+        showAlert('공지사항이 등록되었습니다. 모든 플레이어에게 실시간 알림이 전송됩니다.', 'success');
         loadNoticesData();
+        
+        console.log('공지사항 등록 완료 - 플레이어들에게 실시간 알림 전송됨');
+        
     } catch (error) {
         console.error('공지사항 생성 오류:', error);
         showAlert('공지사항 등록 중 오류가 발생했습니다.', 'error');
