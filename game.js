@@ -1485,7 +1485,7 @@ function updateRankMessage() {
         rankMessageElement.style.opacity = '1';
         rankMessageElement.style.transform = 'translateY(0)';
     }, 200);
-}}
+}
 
 // 랭킹 토스트 메시지 표시
 function showRankingToast(message, type = 'info') {
