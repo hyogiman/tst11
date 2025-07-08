@@ -1399,14 +1399,12 @@ function setupMerchantRankingListener() {
         });
 }
 
-// 상인 랭킹 UI 업데이트 (순위 메시지도 실시간 업데이트)
 function updateMerchantRankingUI(prevRank, prevTotal) {
     if (gameState.role !== 'merchant') {
         return;
     }
 
     const rankElement = document.getElementById('merchantRank');
-    const totalElement = document.getElementById('merchantTotal');
     
     if (rankElement && gameState.merchantRank) {
         if (prevRank && prevRank !== gameState.merchantRank) {
@@ -1439,19 +1437,7 @@ function updateMerchantRankingUI(prevRank, prevTotal) {
         }
     }
     
-    if (totalElement && gameState.totalMerchants) {
-        if (prevTotal && prevTotal !== gameState.totalMerchants) {
-            // 전체 상인 수 변경 애니메이션
-            totalElement.classList.add('updating');
-            animateNumber(totalElement, prevTotal, gameState.totalMerchants, 600);
-            
-            setTimeout(() => {
-                totalElement.classList.remove('updating');
-            }, 600);
-        } else {
-            totalElement.textContent = gameState.totalMerchants;
-        }
-    }
+    // 🆕 총 상인 수 관련 코드 제거 (더 이상 업데이트하지 않음)
     
     // 🆕 순위 메시지 실시간 업데이트 추가
     updateRankMessage();
@@ -1459,7 +1445,7 @@ function updateMerchantRankingUI(prevRank, prevTotal) {
 
 // 🆕 순위 메시지를 실시간으로 업데이트하는 새로운 함수
 function updateRankMessage() {
-    if (gameState.role !== 'merchant' || !gameState.merchantRank || !gameState.totalMerchants) {
+    if (gameState.role !== 'merchant' || !gameState.merchantRank) {
         return;
     }
     
@@ -1471,7 +1457,7 @@ function updateRankMessage() {
     // 기존 클래스 제거
     rankMessageElement.classList.remove('first-place', 'top-three', 'upper-half', 'encourage');
     
-    // 순위에 따른 새로운 메시지와 클래스 설정
+    // 순위에 따른 새로운 메시지와 클래스 설정 (총 상인 수 없이)
     let newMessage = '';
     let newClass = '';
     
@@ -1481,8 +1467,8 @@ function updateRankMessage() {
     } else if (gameState.merchantRank <= 3) {
         newMessage = '🥇 상위권 진입!';
         newClass = 'top-three';
-    } else if (gameState.merchantRank <= Math.ceil(gameState.totalMerchants / 2)) {
-        newMessage = '📈 상위 절반 유지';
+    } else if (gameState.merchantRank <= 5) {
+        newMessage = '📈 좋은 성과입니다!';
         newClass = 'upper-half';
     } else {
         newMessage = '💪 더 노력해보세요!';
@@ -1499,7 +1485,7 @@ function updateRankMessage() {
         rankMessageElement.style.opacity = '1';
         rankMessageElement.style.transform = 'translateY(0)';
     }, 200);
-}
+}}
 
 // 랭킹 토스트 메시지 표시
 function showRankingToast(message, type = 'info') {
@@ -1584,21 +1570,19 @@ async function displayMerchantResults(container) {
     // 실시간 랭킹 정보 가져오기 (최신 데이터)
     if (gameState.role === 'merchant') {
         // 랭킹 정보가 없으면 다시 계산
-        if (!gameState.merchantRank || !gameState.totalMerchants) {
+        if (!gameState.merchantRank) {
             const { rank, totalMerchants } = await calculateMerchantRanking();
             gameState.merchantRank = rank;
             gameState.totalMerchants = totalMerchants;
         }
 
         html += '<div class="merchant-ranking-info">';
-        if (gameState.merchantRank && gameState.totalMerchants) {
+        if (gameState.merchantRank) {
             html += '<div class="ranking-display">';
-            html += '<div class="rank-title">실시간 순위</div>';
+            html += '<div class="rank-title">현재 순위</div>';
             html += '<div class="rank-numbers">';
             html += '<span id="merchantRank" class="rank-number">' + gameState.merchantRank + '</span>';
-            html += '<span class="rank-separator">위 / </span>';
-            html += '<span id="merchantTotal" class="total-merchants">' + gameState.totalMerchants + '</span>';
-            html += '<span class="rank-suffix">명</span>';
+            html += '<span class="rank-suffix">위</span>';
             html += '</div>';
             
             // 순위별 특별 메시지
@@ -1606,8 +1590,8 @@ async function displayMerchantResults(container) {
                 html += '<div class="rank-message first-place">🏆 최고의 상인입니다!</div>';
             } else if (gameState.merchantRank <= 3) {
                 html += '<div class="rank-message top-three">🥇 상위권 진입!</div>';
-            } else if (gameState.merchantRank <= Math.ceil(gameState.totalMerchants / 2)) {
-                html += '<div class="rank-message upper-half">📈 상위 절반 유지</div>';
+            } else if (gameState.merchantRank <= 5) {
+                html += '<div class="rank-message upper-half">📈 좋은 성과입니다!</div>';
             } else {
                 html += '<div class="rank-message encourage">💪 더 노력해보세요!</div>';
             }
