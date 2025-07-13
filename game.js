@@ -2076,9 +2076,9 @@ async function executeKill(killIndex) {
         let rewardMoney = 0;
         if (gameState.role === 'criminal') {
             if (kill.targetRole === 'merchant') {
-                rewardMoney = Math.floor(Math.random() * 11) + 10; // 10~20원
+                rewardMoney = Math.floor(Math.random() * 41) + 40; // 40~80원
             } else if (kill.targetRole === 'detective') {
-                rewardMoney = Math.floor(Math.random() * 51) + 50; // 50~100원
+                rewardMoney = Math.floor(Math.random() * 71) + 50; // 70~120원
             }
         }
 
