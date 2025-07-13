@@ -21,17 +21,11 @@ function setupRealtimeListener() {
             if (!gameState.isLoggedIn) {
                 return;
             }
-
-            if (doc.exists) {
-                const data = doc.data();
-                
-                // receivedInteractions 데이터 동기화
-                if (data.receivedInteractions) {
-                    gameState.receivedInteractions = data.receivedInteractions;
-                    // 상대가 나에게 상호작용했을 때도 카운터 업데이트
-                    updateInteractionCount();
-                }
-            // 🆕 범인인 경우 돈 정보도 실시간 동기화
+        
+        if (doc.exists) {
+            const data = doc.data();
+            
+            // 🆕 범인인 경우 돈 정보도 실시간 동기화 (맨 먼저)
             if (gameState.role === 'criminal') {
                 const serverMoney = data.criminalMoney || 0;
                 if (criminalMoney !== serverMoney) {
@@ -47,6 +41,7 @@ function setupRealtimeListener() {
                     }
                 }
             }
+            
             // receivedInteractions 데이터 동기화
             if (data.receivedInteractions) {
                 gameState.receivedInteractions = data.receivedInteractions;
@@ -271,10 +266,17 @@ function initializeCriminalMoney() {
 
 // 서버에서 범인 돈 정보 로드
 async function loadCriminalMoney() {
+    
+    console.log('🔍 loadCriminalMoney 함수 시작 - 플레이어:', gameState.player.loginCode); // 🆕 디버깅 로그
+    
     try {
         const playerDoc = await db.collection('activePlayers').doc(gameState.player.loginCode).get();
+        console.log('🔍 플레이어 문서 존재 여부:', playerDoc.exists); // 🆕 디버깅 로그
+        
         if (playerDoc.exists) {
             const data = playerDoc.data();
+            console.log('🔍 서버 데이터:', data); // 🆕 디버깅 로그
+            console.log('🔍 서버 criminalMoney:', data.criminalMoney); // 🆕 디버깅 로그
             
             // 🔧 criminalMoney 복원 (기본값 0)
             criminalMoney = data.criminalMoney || 0;
@@ -590,27 +592,40 @@ async function quickLogin() {
                 killCount: activeData.killCount || 0,
                 money: activeData.money || 0,
                 usedCodes: activeData.usedCodes || [], // 사용된 코드 목록도 보존
-                receivedInteractions: activeData.receivedInteractions || {}
+                receivedInteractions: activeData.receivedInteractions || {},
+                // 🆕 범인 관련 데이터도 보존
+                criminalMoney: activeData.criminalMoney || 0,
+                maxKills: activeData.maxKills || 3,
+                criminalShopPurchases: activeData.criminalShopPurchases || {}
             };
         }
 
-        // 활성 플레이어로 등록 (기존 데이터 유지)
-        await db.collection('activePlayers').doc(loginCode).set({
-            name: userData.name,
-            position: userData.position,
-            role: userData.role,
-            secretCode: userData.secretCode,
-            reconnectPassword: userData.reconnectPassword,
-            isAlive: true,
-            isActive: true,
-            results: previousData.results || [],
-            killCount: previousData.killCount || 0,
-            money: previousData.money || 0,
-            usedCodes: previousData.usedCodes || [], // 사용된 코드 목록 보존
-            receivedInteractions: previousData.receivedInteractions || {},
-            loginTime: firebase.firestore.FieldValue.serverTimestamp()
-        });
+            // 활성 플레이어로 등록 (기존 데이터 유지)
+            const playerData = {
+                name: userData.name,
+                position: userData.position,
+                role: userData.role,
+                secretCode: userData.secretCode,
+                reconnectPassword: userData.reconnectPassword,
+                isAlive: true,
+                isActive: true,
+                results: previousData.results || [],
+                killCount: previousData.killCount || 0,
+                money: previousData.money || 0,
+                usedCodes: previousData.usedCodes || [], // 사용된 코드 목록 보존
+                receivedInteractions: previousData.receivedInteractions || {},
+                loginTime: firebase.firestore.FieldValue.serverTimestamp()
+            };
+            
+            // 🆕 범인인 경우 범인 관련 데이터도 추가
+            if (userData.role === 'criminal') {
+                playerData.criminalMoney = previousData.criminalMoney || 0;
+                playerData.maxKills = previousData.maxKills || 3;
+                playerData.criminalShopPurchases = previousData.criminalShopPurchases || {};
+            }
 
+            await db.collection('activePlayers').doc(loginCode).set(playerData);
+        
         // 게임 상태 설정
         gameState.player = {
             name: userData.name,
@@ -823,6 +838,15 @@ async function completeLogin() {
     
 setupRealtimeListener();
     
+    console.log('로그인 완료!');
+    // 🆕 범인인 경우 돈 정보 로드 (다른 초기화보다 먼저)
+    if (gameState.role === 'criminal') {
+        await loadCriminalMoney();
+        console.log('범인 돈 로드 완료:', criminalMoney + '원');
+    }
+    
+    setupRealtimeListener();
+    
     // 상인인 경우 랭킹 시스템 초기화
     if (gameState.role === 'merchant') {
         const { rank, totalMerchants } = await calculateMerchantRanking();
@@ -832,14 +856,7 @@ setupRealtimeListener();
     }
     
     console.log('로그인 완료!');
-     // 🆕 범인인 경우 돈 정보 로드
-    if (gameState.role === 'criminal') {
-        await loadCriminalMoney();
-        console.log('범인 돈 로드 완료:', criminalMoney + '원');
-    }
-    
-    console.log('로그인 완료!');
-}   
+}
 
 // 상호작용 미션이나 시크릿 코드 내용 변경 감지
 async function checkForContentUpdates() {
