@@ -1408,6 +1408,7 @@ async function processSecretCode(targetPlayer, targetPlayerId) {
     let result = {
         targetCode: targetPlayer.secretCode,
         targetName: targetPlayer.name,
+        targetPosition: targetPlayer.position,
         targetPlayerId: targetPlayerId,
         timestamp: new Date().toLocaleString('ko-KR')
     };
@@ -1761,9 +1762,9 @@ async function displayCriminalResults(container) {
                 // 아직 실행 안 된 경우 예상 보상 표시
                 let expectedReward = '';
                 if (kill.targetRole === 'merchant') {
-                    expectedReward = '40~80원';
+                    expectedReward = '랜덤보상';
                 } else if (kill.targetRole === 'detective') {
-                    expectedReward = '70~120원';
+                    expectedReward = '랜덤보상';
                 }
                 if (expectedReward) {
                     html += '<span class="kill-reward">💰 ' + expectedReward + '</span>';
