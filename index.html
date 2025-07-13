@@ -509,14 +509,15 @@ body {
     scrollbar-color: #d1d5db transparent;
 }
         
-/* 🆕 공지사항 이미지 스타일 추가 */
+/* 🆕 공지사항 이미지 스타일 개선 */
 .notice-image-container {
     margin-bottom: 12px;
     text-align: center;
 }
+
 .notice-image-container img {
     max-width: 100%;
-    max-height: 250px; /* 🆕 최대 높이 제한 */
+    max-height: 250px;
     object-fit: contain;
     border-radius: 8px;
     box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -535,7 +536,7 @@ body {
     margin-bottom: 8px;
     border: 1px solid #e5e7eb;
     transition: all 0.3s ease;
-    overflow: visible; /* 🆕 overflow 해제 */
+    overflow: hidden; /* 🆕 토글 애니메이션을 위해 hidden 유지 */
 }
 
 .notice-header {
@@ -546,12 +547,15 @@ body {
     align-items: center;
     background: white;
     transition: background-color 0.3s ease;
+    user-select: none; /* 🆕 텍스트 선택 방지 */
 }
 
 .notice-header:hover {
     background: #f9fafb;
 }
-
+.notice-header:active {
+    background: #f3f4f6; /* 🆕 클릭 피드백 */
+}
 .notice-title {
     font-weight: 600;
     color: #1f2937;
@@ -562,31 +566,38 @@ body {
 .notice-toggle {
     color: #6b7280;
     font-size: 0.8em;
-    transition: transform 0.3s ease;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-weight: bold;
+    min-width: 16px;
+    text-align: center;
 }
 
 .notice-item.expanded .notice-toggle {
     transform: rotate(180deg);
+    color: #667eea;
 }
 
 .notice-content {
     padding: 0 16px;
     max-height: 0;
     overflow: hidden;
-    transition: all 0.4s ease; /* 🆕 애니메이션 시간 늘림 */
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
     background: #f9fafb;
+    opacity: 0;
 }
 
 .notice-item.expanded .notice-content {
-    max-height: none; /* 🆕 높이 제한 완전 제거 */
+    max-height: 1000px; /* 🆕 충분히 큰 값으로 설정 */
     padding: 12px 16px;
-    overflow: visible; /* 🆕 스크롤 해제 */
+    opacity: 1;
+    overflow: visible; /* 🆕 확장된 상태에서는 visible */
 }
-
 .notice-text {
     color: #4b5563;
-    line-height: 1.4;
+    line-height: 1.5;
     font-size: 0.9em;
+    word-wrap: break-word; /* 🆕 긴 단어 줄바꿈 */
+    white-space: normal; /* 🆕 일반적인 공백 처리 */
 }
 
 /* ========== 나의 시크릿 코드 토글 스타일 ========== */
