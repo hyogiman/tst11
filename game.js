@@ -1007,7 +1007,7 @@ async function loadInteractionMission() {
     }
 }
 
-// 공지사항 로드 함수
+// 🆕 수정된 공지사항 로드 함수 (이미지 포함)
 async function loadNotices() {
     try {
         const noticesSnapshot = await db.collection('notices')
@@ -1032,6 +1032,15 @@ async function loadNotices() {
                     '<div class="notice-toggle">▼</div>' +
                     '</div>' +
                     '<div class="notice-content">' +
+                    // 🆕 이미지가 있으면 표시 (텍스트 위에)
+                    (notice.imageUrl ? 
+                        '<div class="notice-image-container" style="margin-bottom: 12px;">' +
+                        '<img src="' + notice.imageUrl + '" alt="공지사항 이미지" ' +
+                        'style="width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px; ' +
+                        'box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer;" ' +
+                        'onclick="openImageModal(\'' + notice.imageUrl + '\')" ' +
+                        'onerror="this.style.display=\'none\'; console.error(\'이미지 로드 실패:\', this.src);">' +
+                        '</div>' : '') +
                     '<div class="notice-text">' + notice.content + '</div>' +
                     '</div>' +
                     '</div>';
@@ -1093,7 +1102,7 @@ function setupNoticesListener() {
     }
 }
 
-// 🆕 공지사항 알림 표시 함수 (진동 기능 포함)
+// 🆕 공지사항 알림에서도 이미지 표시 (기존 함수 수정)
 function showNoticeAlert(title, content, onCloseCallback) {
     // 🆕 휴대폰 진동 발생 (공지사항 특별 패턴)
     triggerNotificationVibration();
@@ -1103,7 +1112,7 @@ function showNoticeAlert(title, content, onCloseCallback) {
     if (existingAlert) {
         existingAlert.remove();
     }
-
+    
     // 알림 요소 생성
     const alert = document.createElement('div');
     alert.className = 'notice-alert';
@@ -1144,6 +1153,7 @@ function showNoticeAlert(title, content, onCloseCallback) {
         }
     }, 10000);
 }
+
 
 // 🆕 공지사항 전용 진동 패턴 함수
 function triggerNotificationVibration() {
@@ -1207,6 +1217,7 @@ function triggerVibrationPattern(type) {
 
 // 🆕 전역 스코프에 함수 등록
 window.triggerVibrationPattern = triggerVibrationPattern;
+
 
 // 🆕 공지사항 알림 닫기 함수
 function closeNoticeAlert() {
@@ -1592,7 +1603,7 @@ async function processSecretCode(targetPlayer, targetPlayerId) {
     }
 }
 
-// 로그인 코드에서 시크릿 정보 가져오기 (제목 포함)
+// 🆕 수정된 시크릿 정보 가져오기 함수 (이미지 URL 포함)
 async function getSecretInfoFromLoginCode(secretCode) {
     try {
         const loginCodesSnapshot = await db.collection('loginCodes')
@@ -1604,14 +1615,15 @@ async function getSecretInfoFromLoginCode(secretCode) {
             const loginCodeData = loginCodesSnapshot.docs[0].data();
             return {
                 title: loginCodeData.secretTitle,
-                content: loginCodeData.secretContent
+                content: loginCodeData.secretContent,
+                imageUrl: loginCodeData.secretImageUrl // 🆕 이미지 URL 추가
             };
         }
         
-        return { title: null, content: null };
+        return { title: null, content: null, imageUrl: null };
     } catch (error) {
         console.error('시크릿 정보 가져오기 오류:', error);
-        return { title: null, content: null };
+        return { title: null, content: null, imageUrl: null };
     }
 }
 
@@ -1674,16 +1686,39 @@ function showDeathMessage() {
     gameStatus.innerHTML = '<div class="status-message error">⚠️ 범인에게 제거되었습니다! 게임에서 제외됩니다.</div>';
 }
 
-function displayCodeResult(result) {
+// 🆕 시크릿 코드 결과 표시 함수 수정 (이미지 포함)
+async function displayCodeResult(result) {
     const resultDiv = document.getElementById('codeResult');
+    
+    // 🆕 시크릿 정보에서 이미지 URL 가져오기
+    let imageHtml = '';
+    if (result.type === 'clue' || result.type === 'evidence') {
+        try {
+            const secretInfo = await getSecretInfoFromLoginCode(result.targetCode);
+            if (secretInfo.imageUrl) {
+                imageHtml = '<div class="secret-image-container" style="margin-bottom: 12px;">' +
+                           '<img src="' + secretInfo.imageUrl + '" alt="증거 이미지" ' +
+                           'style="width: 100%; max-height: 250px; object-fit: contain; border-radius: 8px; ' +
+                           'box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer;" ' +
+                           'onclick="openImageModal(\'' + secretInfo.imageUrl + '\')" ' +
+                           'onerror="this.style.display=\'none\'; console.error(\'이미지 로드 실패:\', this.src);">' +
+                           '</div>';
+            }
+        } catch (error) {
+            console.error('시크릿 이미지 가져오기 오류:', error);
+        }
+    }
+    
     let html = '<div class="status-message">' +
                '<strong>' + result.title + '</strong><br>' +
+               imageHtml + // 🆕 이미지 먼저 표시
                result.content + '</div>';
     resultDiv.innerHTML = html;
-        // 🆕 시크릿 코드 성공 진동
+    
     triggerVibrationPattern('success');
 }
 
+// 🆕 수정된 탐정 결과 표시 함수 (이미지 포함)
 function displayDetectiveResults(container) {
     const clues = gameState.results.filter(function(r) { 
         return r.type === 'clue' || r.type === 'evidence'; 
@@ -1713,7 +1748,177 @@ function displayDetectiveResults(container) {
     html += '</div>';
     
     container.innerHTML = html;
+    
+    // 🆕 단서에 이미지 추가 (비동기로 처리)
+    addImagesToClues(clues);
 }
+// 🆕 단서에 이미지를 추가하는 비동기 함수
+async function addImagesToClues(clues) {
+    for (let i = 0; i < clues.length; i++) {
+        const clue = clues[i];
+        const clueId = 'clue-' + i;
+        
+        try {
+            const secretInfo = await getSecretInfoFromLoginCode(clue.targetCode);
+            if (secretInfo.imageUrl) {
+                const clueContent = document.querySelector('#' + clueId + ' .clue-content');
+                if (clueContent) {
+                    // 이미지 HTML을 텍스트 앞에 삽입
+                    const imageHtml = '<div class="clue-image-container" style="margin-bottom: 12px;">' +
+                                     '<img src="' + secretInfo.imageUrl + '" alt="단서 이미지" ' +
+                                     'style="width: 100%; max-height: 200px; object-fit: contain; border-radius: 8px; ' +
+                                     'box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer;" ' +
+                                     'onclick="openImageModal(\'' + secretInfo.imageUrl + '\')" ' +
+                                     'onerror="this.style.display=\'none\'; console.error(\'이미지 로드 실패:\', this.src);">' +
+                                     '</div>';
+                    
+                    const clueText = clueContent.querySelector('.clue-text');
+                    if (clueText) {
+                        clueText.insertAdjacentHTML('beforebegin', imageHtml);
+                    }
+                }
+            }
+        } catch (error) {
+            console.error('단서 이미지 추가 오류:', error);
+        }
+    }
+}
+
+// 🆕 이미지 모달 창 열기 함수
+function openImageModal(imageUrl) {
+    // 기존 모달이 있으면 제거
+    const existingModal = document.querySelector('.image-modal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // 모달 HTML 생성
+    const modal = document.createElement('div');
+    modal.className = 'image-modal';
+    modal.innerHTML = `
+        <div class="image-modal-overlay" onclick="closeImageModal()"></div>
+        <div class="image-modal-content">
+            <button class="image-modal-close" onclick="closeImageModal()">&times;</button>
+            <img src="${imageUrl}" alt="확대 이미지" class="image-modal-img" 
+                 onerror="this.parentElement.innerHTML='<p style=\\"padding: 20px; text-align: center; color: #666;\\">이미지를 불러올 수 없습니다.</p>'">
+        </div>
+    `;
+    
+    // 모달 스타일 추가 (한 번만)
+    if (!document.querySelector('style[data-image-modal]')) {
+        const style = document.createElement('style');
+        style.setAttribute('data-image-modal', 'true');
+        style.textContent = `
+            .image-modal {
+                position: fixed;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                z-index: 10000;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                animation: modalFadeIn 0.3s ease-out;
+            }
+            
+            .image-modal-overlay {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0, 0, 0, 0.8);
+                cursor: pointer;
+            }
+            
+            .image-modal-content {
+                position: relative;
+                max-width: 90vw;
+                max-height: 90vh;
+                background: white;
+                border-radius: 12px;
+                overflow: hidden;
+                box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+                animation: modalSlideIn 0.3s ease-out;
+            }
+            
+            .image-modal-close {
+                position: absolute;
+                top: 10px;
+                right: 15px;
+                background: rgba(0, 0, 0, 0.6);
+                color: white;
+                border: none;
+                font-size: 24px;
+                font-weight: bold;
+                width: 35px;
+                height: 35px;
+                border-radius: 50%;
+                cursor: pointer;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 10001;
+                transition: background-color 0.3s ease;
+            }
+            
+            .image-modal-close:hover {
+                background: rgba(0, 0, 0, 0.8);
+            }
+            
+            .image-modal-img {
+                max-width: 100%;
+                max-height: 90vh;
+                object-fit: contain;
+                display: block;
+            }
+            
+            @keyframes modalFadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            
+            @keyframes modalSlideIn {
+                from { transform: scale(0.8) translateY(20px); opacity: 0; }
+                to { transform: scale(1) translateY(0); opacity: 1; }
+            }
+            
+            @media (max-width: 480px) {
+                .image-modal-content {
+                    max-width: 95vw;
+                    max-height: 95vh;
+                }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    document.body.appendChild(modal);
+    
+    // ESC 키로 모달 닫기
+    const handleEscape = (e) => {
+        if (e.key === 'Escape') {
+            closeImageModal();
+            document.removeEventListener('keydown', handleEscape);
+        }
+    };
+    document.addEventListener('keydown', handleEscape);
+}
+
+// 🆕 이미지 모달 창 닫기 함수
+function closeImageModal() {
+    const modal = document.querySelector('.image-modal');
+    if (modal) {
+        modal.style.animation = 'modalFadeIn 0.3s ease-out reverse';
+        setTimeout(() => {
+            if (modal.parentNode) {
+                modal.remove();
+            }
+        }, 300);
+    }
+}
+
 
 // 수정된 범인 결과 화면 (displayCriminalResults 함수 교체)
 
@@ -2685,3 +2890,5 @@ function openCriminalShop() {
 window.toggleCriminalShop = toggleCriminalShop;
 window.getCriminalShopStatus = getCriminalShopStatus;
 window.openCriminalShop = openCriminalShop;
+window.openImageModal = openImageModal;
+window.closeImageModal = closeImageModal;
