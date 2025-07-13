@@ -520,7 +520,6 @@ async function deleteLoginCode(loginCode) {
     }
 }
 
-// 플레이어 데이터 로드
 async function loadPlayersData() {
     try {
         const registeredSnapshot = await db.collection('registeredUsers').get();
@@ -534,7 +533,7 @@ async function loadPlayersData() {
         const tbody = document.getElementById('playersTable');
         tbody.innerHTML = '';
 
-        registeredSnapshot.forEach(doc => {
+        registeredSnapshot.forEach(doc => {  // ← 여기서 doc이 정의됨
             const userData = doc.data();
             const activeData = activePlayersMap[doc.id];
             
@@ -542,7 +541,7 @@ async function loadPlayersData() {
             let statusClass = '';
             let showReviveButton = false;
             let showPunishButton = false;
-            
+
             if (activeData) {
                 // 🆕 먼저 생존/사망 상태 확인
                 if (activeData.isAlive) {
@@ -551,8 +550,8 @@ async function loadPlayersData() {
                         statusText = '접속중';
                         statusClass = 'status-online';
                     } else {
-                        statusText = '미참여';
-                        statusClass = '';
+                        statusText = '생존(미접속)';
+                        statusClass = 'status-alive';
                     }
                     showPunishButton = true; // 생존자만 징벌 가능
                 } else {
@@ -582,6 +581,17 @@ async function loadPlayersData() {
                 // activeData가 없으면 징벌 불가 (아직 게임에 참여하지 않음)
             }
 
+            // 🆕 디버깅 로그 (이 위치에서만 사용)
+            console.log('플레이어 상태 디버깅:', {
+                playerId: doc.id,
+                playerName: userData.name,
+                isAlive: activeData?.isAlive,
+                isActive: activeData?.isActive,
+                deathReason: activeData?.deathReason,
+                statusText: statusText,
+                statusClass: statusClass
+            });
+
             const roleNames = {
                 'detective': '탐정',
                 'criminal': '범인',
@@ -598,6 +608,10 @@ async function loadPlayersData() {
                 html += '#27ae60';
             } else if (statusClass === 'status-dead') {
                 html += '#e74c3c';
+            } else if (statusClass === 'status-online') {
+                html += '#10b981';
+            } else if (statusClass === 'status-punished') {
+                html += '#8b5cf6';
             } else {
                 html += '#6c757d';
             }
@@ -619,18 +633,10 @@ async function loadPlayersData() {
             html += '<button class="btn danger" onclick="deletePlayer(\'' + doc.id + '\')" style="width: auto; padding: 5px 10px; font-size: 12px;">삭제</button>';
             html += '</td>';
             row.innerHTML = html;
-        });
+        }); // ← registeredSnapshot.forEach 끝
     } catch (error) {
         console.error('플레이어 데이터 로드 오류:', error);
     }
-        console.log('플레이어 상태 디버깅:', {
-        playerId: doc.id,
-        isAlive: activeData?.isAlive,
-        isActive: activeData?.isActive,
-        deathReason: activeData?.deathReason,
-        statusText: statusText,
-        statusClass: statusClass
-    });
 }
 
 // admin.js에서 기존 showPlayerDetail 함수를 다음 코드로 교체하세요
