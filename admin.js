@@ -1,3 +1,84 @@
+// 🆕 이미지 관련 전역 변수
+let noticeImageFile = null;
+let secretImageFile = null;
+// 🆕 공지사항 이미지 미리보기
+function previewNoticeImage(input) {
+    if (input.files && input.files[0]) {
+        noticeImageFile = input.files[0];
+        
+        // 파일 크기 체크
+        if (noticeImageFile.size > 5 * 1024 * 1024) {
+            alert('이미지 크기는 5MB 이하로 선택해주세요.');
+            input.value = '';
+            noticeImageFile = null;
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('noticePreviewImg').src = e.target.result;
+            document.getElementById('noticeImagePreview').style.display = 'block';
+        };
+        reader.readAsDataURL(noticeImageFile);
+    }
+}
+// 🆕 시크릿 코드 이미지 미리보기
+function previewSecretImage(input) {
+    if (input.files && input.files[0]) {
+        secretImageFile = input.files[0];
+        
+        // 파일 크기 체크
+        if (secretImageFile.size > 5 * 1024 * 1024) {
+            alert('이미지 크기는 5MB 이하로 선택해주세요.');
+            input.value = '';
+            secretImageFile = null;
+            return;
+        }
+        
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            document.getElementById('secretPreviewImg').src = e.target.result;
+            document.getElementById('secretImagePreview').style.display = 'block';
+        };
+        reader.readAsDataURL(secretImageFile);
+    }
+}
+
+// 🆕 공지사항 이미지 제거
+function removeNoticeImage() {
+    document.getElementById('noticeImageUpload').value = '';
+    document.getElementById('noticeImagePreview').style.display = 'none';
+    noticeImageFile = null;
+}
+
+// 🆕 시크릿 코드 이미지 제거
+function removeSecretImage() {
+    document.getElementById('secretImageUpload').value = '';
+    document.getElementById('secretImagePreview').style.display = 'none';
+    secretImageFile = null;
+}
+
+// 🆕 로딩 표시 함수
+function showUploadLoading(buttonId, loadingText = '업로드 중...') {
+    const button = document.getElementById(buttonId);
+    if (button) {
+        button.dataset.originalText = button.textContent;
+        button.textContent = loadingText;
+        button.disabled = true;
+    }
+}
+
+// 🆕 로딩 해제 함수
+function hideUploadLoading(buttonId) {
+    const button = document.getElementById(buttonId);
+    if (button && button.dataset.originalText) {
+        button.textContent = button.dataset.originalText;
+        button.disabled = false;
+        delete button.dataset.originalText;
+    }
+}
+
+
 // 🆕 중복되지 않는 새로운 시크릿 코드 생성 함수
 async function generateUniqueSecretCode() {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -307,7 +388,7 @@ async function resetGame() {
 // 로그인 코드 생성/수정 관련 변수
 let editingCodeId = null;
 
-// 로그인 코드 생성 또는 수정
+// 🆕 수정된 로그인 코드 생성 함수
 async function createOrUpdateLoginCode() {
     const loginCode = document.getElementById('newLoginCode').value.toUpperCase();
     const role = document.getElementById('newCodeRole').value;
@@ -327,7 +408,9 @@ async function createOrUpdateLoginCode() {
     }
 
     try {
-        // 수정 모드가 아닌 경우에만 중복 검사
+        showUploadLoading('createCodeBtn', '코드 생성 중...');
+
+        // 🆕 수정 모드가 아닌 경우에만 중복 검사
         if (!editingCodeId) {
             const existingCodeDoc = await db.collection('loginCodes').doc(loginCode).get();
             if (existingCodeDoc.exists) {
@@ -336,11 +419,22 @@ async function createOrUpdateLoginCode() {
             }
         }
 
+        let imageData = null;
+        
+        // 🆕 이미지가 있으면 업로드
+        if (secretImageFile) {
+            console.log('시크릿 코드 이미지 업로드 시작');
+            imageData = await uploadImageToStorage(secretImageFile, 'secrets');
+            console.log('시크릿 코드 이미지 업로드 완료:', imageData.url);
+        }
+
         const codeData = {
             role: role,
             secretCode: secretCode,
             secretTitle: secretTitle,
             secretContent: secretContent,
+            secretImageUrl: imageData ? imageData.url : null,
+            secretImagePath: imageData ? imageData.path : null,
             interactionMission: interactionMission,
             updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedBy: 'admin'
@@ -356,33 +450,40 @@ async function createOrUpdateLoginCode() {
                     return;
                 }
                 
+                // 🆕 기존 이미지 삭제 처리
+                const oldDoc = await db.collection('loginCodes').doc(editingCodeId).get();
+                if (oldDoc.exists && oldDoc.data().secretImagePath) {
+                    await deleteImageFromStorage(oldDoc.data().secretImagePath);
+                }
+                
                 // 기존 문서 삭제하고 새 문서 생성
                 await db.collection('loginCodes').doc(editingCodeId).delete();
                 
-                // 기존 데이터에서 used 정보 가져오기
-                const oldDoc = await db.collection('loginCodes').doc(editingCodeId).get();
-                if (oldDoc.exists) {
-                    const oldData = oldDoc.data();
-                    codeData.used = oldData.used || false;
-                    codeData.usedBy = oldData.usedBy || null;
-                    codeData.usedAt = oldData.usedAt || null;
-                    codeData.createdAt = oldData.createdAt || firebase.firestore.FieldValue.serverTimestamp();
-                } else {
-                    codeData.used = false;
-                    codeData.createdAt = firebase.firestore.FieldValue.serverTimestamp();
-                }
+                const oldData = oldDoc.data();
+                codeData.used = oldData.used || false;
+                codeData.usedBy = oldData.usedBy || null;
+                codeData.usedAt = oldData.usedAt || null;
+                codeData.createdAt = oldData.createdAt || firebase.firestore.FieldValue.serverTimestamp();
                 
                 await db.collection('loginCodes').doc(loginCode).set(codeData);
                 
-                // 기존 사용자 데이터도 업데이트 (로그인 코드가 변경된 경우)
+                // 기존 사용자 데이터도 업데이트
                 await updateUserDataAfterCodeChange(editingCodeId, loginCode, codeData);
                 
                 showAlert('로그인 코드가 수정되었습니다.', 'success');
             } else {
                 // 로그인 코드는 그대로, 다른 필드만 수정
+                // 🆕 기존 이미지가 있고 새 이미지가 업로드된 경우 기존 이미지 삭제
+                if (imageData) {
+                    const existingDoc = await db.collection('loginCodes').doc(loginCode).get();
+                    if (existingDoc.exists && existingDoc.data().secretImagePath) {
+                        await deleteImageFromStorage(existingDoc.data().secretImagePath);
+                    }
+                }
+                
                 await db.collection('loginCodes').doc(loginCode).update(codeData);
                 
-                // 기존 사용자 데이터도 업데이트 (같은 로그인 코드)
+                // 기존 사용자 데이터도 업데이트
                 await updateUserDataAfterCodeChange(loginCode, loginCode, codeData);
                 
                 showAlert('로그인 코드가 수정되었습니다.', 'success');
@@ -404,7 +505,9 @@ async function createOrUpdateLoginCode() {
 
     } catch (error) {
         console.error('로그인 코드 처리 오류:', error);
-        showAlert('처리 중 오류가 발생했습니다.', 'error');
+        showAlert('처리 중 오류가 발생했습니다: ' + error.message, 'error');
+    } finally {
+        hideUploadLoading('createCodeBtn');
     }
 }
 
@@ -515,7 +618,7 @@ function cancelEdit() {
     resetCodeForm();
 }
 
-// 폼 초기화
+// 🆕 수정된 폼 초기화 함수
 function resetCodeForm() {
     editingCodeId = null;
     document.getElementById('codeFormTitle').textContent = '새 로그인 코드 생성';
@@ -528,6 +631,9 @@ function resetCodeForm() {
     document.getElementById('newSecretTitle').value = '';
     document.getElementById('newSecretContent').value = '';
     document.getElementById('newInteractionMission').value = '';
+    
+    // 🆕 이미지 관련 초기화
+    removeSecretImage();
 }
 
 // 로그인 코드 목록 로드
@@ -572,12 +678,22 @@ async function loadLoginCodesList() {
     }
 }
 
-// 로그인 코드 삭제
+// 🆕 수정된 로그인 코드 삭제 함수 (이미지도 함께 삭제)
 async function deleteLoginCode(loginCode) {
     if (!confirm('정말 이 로그인 코드를 삭제하시겠습니까?')) return;
 
     try {
+        // 🆕 로그인 코드 데이터 가져와서 이미지 경로 확인
+        const codeDoc = await db.collection('loginCodes').doc(loginCode).get();
+        
+        if (codeDoc.exists && codeDoc.data().secretImagePath) {
+            // 🆕 Storage에서 이미지 삭제
+            await deleteImageFromStorage(codeDoc.data().secretImagePath);
+        }
+        
+        // Firestore에서 로그인 코드 삭제
         await db.collection('loginCodes').doc(loginCode).delete();
+        
         showAlert('로그인 코드가 삭제되었습니다.', 'success');
         loadLoginCodesList();
         loadOverviewData();
@@ -1187,7 +1303,7 @@ async function getPlayerPunishmentHistory(playerId) {
     }
 }
 
-// 공지사항 생성
+// 🆕 수정된 공지사항 생성 함수
 async function createNotice() {
     const title = document.getElementById('newNoticeTitle').value;
     const content = document.getElementById('newNoticeContent').value;
@@ -1198,10 +1314,23 @@ async function createNotice() {
     }
 
     try {
-        // 공지사항 등록 (createdAt으로 정렬되므로 최신 공지가 먼저 감지됨)
+        showUploadLoading('createNoticeBtn', '공지사항 등록 중...');
+
+        let imageData = null;
+        
+        // 🆕 이미지가 있으면 업로드
+        if (noticeImageFile) {
+            console.log('공지사항 이미지 업로드 시작');
+            imageData = await uploadImageToStorage(noticeImageFile, 'notices');
+            console.log('공지사항 이미지 업로드 완료:', imageData.url);
+        }
+
+        // 공지사항 등록
         await db.collection('notices').add({
             title: title,
             content: content,
+            imageUrl: imageData ? imageData.url : null,
+            imagePath: imageData ? imageData.path : null,
             createdAt: firebase.firestore.FieldValue.serverTimestamp(),
             createdBy: 'admin'
         });
@@ -1209,18 +1338,18 @@ async function createNotice() {
         // 입력 필드 초기화
         document.getElementById('newNoticeTitle').value = '';
         document.getElementById('newNoticeContent').value = '';
+        removeNoticeImage();
 
-        showAlert('공지사항이 등록되었습니다. 모든 플레이어에게 실시간 알림이 전송됩니다.', 'success');
+        showAlert('공지사항이 등록되었습니다.', 'success');
         loadNoticesData();
-        
-        console.log('공지사항 등록 완료 - 플레이어들에게 실시간 알림 전송됨');
         
     } catch (error) {
         console.error('공지사항 생성 오류:', error);
-        showAlert('공지사항 등록 중 오류가 발생했습니다.', 'error');
+        showAlert('공지사항 등록 중 오류가 발생했습니다: ' + error.message, 'error');
+    } finally {
+        hideUploadLoading('createNoticeBtn');
     }
 }
-
 // 공지사항 목록 로드
 async function loadNoticesData() {
     try {
@@ -1253,12 +1382,22 @@ async function loadNoticesData() {
     }
 }
 
-// 공지사항 삭제
+// 🆕 수정된 공지사항 삭제 함수 (이미지도 함께 삭제)
 async function deleteNotice(noticeId) {
     if (!confirm('정말 이 공지사항을 삭제하시겠습니까?')) return;
 
     try {
+        // 🆕 공지사항 데이터 가져와서 이미지 경로 확인
+        const noticeDoc = await db.collection('notices').doc(noticeId).get();
+        
+        if (noticeDoc.exists && noticeDoc.data().imagePath) {
+            // 🆕 Storage에서 이미지 삭제
+            await deleteImageFromStorage(noticeDoc.data().imagePath);
+        }
+        
+        // Firestore에서 공지사항 삭제
         await db.collection('notices').doc(noticeId).delete();
+        
         showAlert('공지사항이 삭제되었습니다.', 'success');
         loadNoticesData();
     } catch (error) {
@@ -1616,3 +1755,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // 실시간 리스너 설정
     setupRealtimeListeners();
 });
+// 🆕 전역 스코프에 함수 등록
+window.previewNoticeImage = previewNoticeImage;
+window.previewSecretImage = previewSecretImage;
+window.removeNoticeImage = removeNoticeImage;
+window.removeSecretImage = removeSecretImage;
