@@ -37,9 +37,16 @@ function setupRealtimeListener() {
                 if (criminalMoney !== serverMoney) {
                     console.log('실시간 돈 동기화:', criminalMoney, '→', serverMoney);
                     criminalMoney = serverMoney;
+                    gameState.criminalMoney = serverMoney; // 🆕 gameState도 동기화
+                    
+                    // 🆕 결과 화면이 열려있으면 즉시 업데이트
+                    if (document.getElementById('resultScreen').classList.contains('active')) {
+                        setupResultScreen().catch(error => {
+                            console.error('실시간 결과 화면 업데이트 오류:', error);
+                        });
+                    }
                 }
             }
-            
             // receivedInteractions 데이터 동기화
             if (data.receivedInteractions) {
                 gameState.receivedInteractions = data.receivedInteractions;
@@ -235,7 +242,9 @@ let gameState = {
     // 랭킹 관련 추가
     merchantRank: null,
     totalMerchants: null,
-    merchantRankingListener: null
+    merchantRankingListener: null,
+    // 🆕 범인 관련 추가
+    criminalMoney: 0
 };
 // 2단계: 범인 상점 기본 변수 - game.js 상단(gameState 변수 근처)에 추가
 
@@ -272,6 +281,11 @@ async function loadCriminalMoney() {
             
             console.log('범인 돈 로드 완료:', criminalMoney + '원'); // 디버깅용
             
+            // 🆕 maxKills도 복원
+            if (data.maxKills) {
+                console.log('최대 킬 횟수 복원:', data.maxKills + '회');
+            }
+            
             // 구매 이력도 복원
             if (data.criminalShopPurchases) {
                 criminalShopItems.forEach(item => {
@@ -279,23 +293,31 @@ async function loadCriminalMoney() {
                     item.purchased = purchased;
                     if (purchased >= item.maxPurchases) {
                         item.available = false;
+                    } else {
+                        item.available = true; // 🆕 명시적으로 available 설정
                     }
                 });
                 console.log('상점 구매 이력 복원:', data.criminalShopPurchases); // 디버깅용
+            } else {
+                // 🆕 구매 이력이 없는 경우 모든 아이템을 구매 가능 상태로 초기화
+                criminalShopItems.forEach(item => {
+                    item.purchased = 0;
+                    item.available = true;
+                });
             }
             
             // 🆕 gameState에도 동기화
-            if (!gameState.criminalMoney) {
-                gameState.criminalMoney = criminalMoney;
-            }
+            gameState.criminalMoney = criminalMoney;
             
         } else {
             console.log('플레이어 문서가 존재하지 않음 - criminalMoney를 0으로 초기화');
             criminalMoney = 0;
+            gameState.criminalMoney = 0;
         }
     } catch (error) {
         console.error('범인 돈 정보 로드 오류:', error);
         criminalMoney = 0;
+        gameState.criminalMoney = 0;
     }
 }
 // 3단계: 범인 돈 획득 시스템 - game.js에 추가
@@ -810,7 +832,14 @@ setupRealtimeListener();
     }
     
     console.log('로그인 완료!');
+     // 🆕 범인인 경우 돈 정보 로드
+    if (gameState.role === 'criminal') {
+        await loadCriminalMoney();
+        console.log('범인 돈 로드 완료:', criminalMoney + '원');
+    }
     
+    console.log('로그인 완료!');
+}   
 
 // 상호작용 미션이나 시크릿 코드 내용 변경 감지
 async function checkForContentUpdates() {
@@ -1192,8 +1221,13 @@ async function logout() {
             });
         }
 
+        // 🆕 범인 관련 변수도 초기화
+        criminalMoney = 0;
+        criminalShopItems.forEach(item => {
+            item.purchased = 0;
+            item.available = true;
+        });
 
-// 게임 상태 완전 초기화
         gameState = {
             isLoggedIn: false,
             player: null,
@@ -1210,9 +1244,9 @@ async function logout() {
             secretContent: null,
             merchantRank: null,
             totalMerchants: null,
-            merchantRankingListener: null
+            merchantRankingListener: null,
+            criminalMoney: 0 // 🆕 추가
         };
-
         // 헤더를 원래 상태로 복구 및 컨텐츠 원상복구
         const header = document.querySelector('.header');
         const content = document.querySelector('.content');
