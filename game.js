@@ -1006,7 +1006,7 @@ async function loadInteractionMission() {
     }
 }
 
-// 🆕 수정된 공지사항 로드 함수 (기존 loadNotices 함수 교체)
+// 🆕 이미지 URL 검증이 추가된 loadNotices 함수 (기존 함수 교체)
 async function loadNotices() {
     try {
         const noticesSnapshot = await db.collection('notices')
@@ -1025,22 +1025,28 @@ async function loadNotices() {
         noticesSnapshot.forEach(function(doc, index) {
             const notice = doc.data();
             
+            // 🆕 이미지 URL 유효성 검사
+            let imageHtml = '';
+            if (notice.imageUrl && notice.imageUrl.trim() !== '' && notice.imageUrl !== 'null') {
+                console.log('공지사항 이미지 URL:', notice.imageUrl);
+                imageHtml = '<div class="notice-image-container" style="margin-bottom: 12px;">' +
+                           '<img src="' + notice.imageUrl + '" alt="공지사항 이미지" ' +
+                           'style="width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px; ' +
+                           'box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer;" ' +
+                           'onclick="openImageModal(\'' + notice.imageUrl + '\')" ' +
+                           'onerror="this.style.display=\'none\'; console.error(\'공지사항 이미지 로드 실패:\', this.src);">' +
+                           '</div>';
+            } else {
+                console.log('공지사항에 유효한 이미지 없음:', notice.imageUrl);
+            }
+            
             html += '<div class="notice-item" id="notice-' + doc.id + '">' +
                     '<div class="notice-header" onclick="toggleNotice(\'' + doc.id + '\')">' +
                     '<div class="notice-title">' + notice.title + '</div>' +
                     '<div class="notice-toggle">▼</div>' +
                     '</div>' +
                     '<div class="notice-content">' +
-                    // 🆕 이미지가 있으면 표시 (텍스트 위에)
-                    (notice.imageUrl ? 
-                        '<div class="notice-image-container" style="margin-bottom: 12px;">' +
-                        '<img src="' + notice.imageUrl + '" alt="공지사항 이미지" ' +
-                        'style="width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px; ' +
-                        'box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer;" ' +
-                        'onclick="openImageModal(\'' + notice.imageUrl + '\')" ' +
-                        'onerror="this.style.display=\'none\'; console.error(\'이미지 로드 실패:\', this.src);">' +
-                        '</div>' : '') +
-                    // 🆕 줄바꿈 처리된 텍스트
+                    imageHtml + // 🆕 검증된 이미지만 표시
                     '<div class="notice-text">' + formatTextWithLineBreaks(notice.content) + '</div>' +
                     '</div>' +
                     '</div>';
@@ -1801,14 +1807,59 @@ async function addImagesToClues(clues) {
     }
 }
 
-// 🆕 이미지 모달 창 열기 함수
+// 🆕 개선된 이미지 모달 열기 함수 (기존 openImageModal 함수 교체)
 function openImageModal(imageUrl) {
+    console.log('이미지 모달 열기 시도:', imageUrl);
+    
+    // 🆕 URL 유효성 검사
+    if (!imageUrl || imageUrl.trim() === '' || imageUrl === 'null' || imageUrl === 'undefined') {
+        console.error('유효하지 않은 이미지 URL:', imageUrl);
+        alert('이미지를 불러올 수 없습니다. (URL이 비어있음)');
+        return;
+    }
+    
+    // 🆕 URL 형식 검사
+    try {
+        new URL(imageUrl);
+    } catch (e) {
+        console.error('잘못된 URL 형식:', imageUrl);
+        alert('이미지를 불러올 수 없습니다. (잘못된 URL 형식)');
+        return;
+    }
+    
     // 기존 모달이 있으면 제거
     const existingModal = document.querySelector('.image-modal');
     if (existingModal) {
         existingModal.remove();
     }
     
+    // 🆕 이미지 미리 로드 테스트
+    const testImg = new Image();
+    testImg.onload = function() {
+        console.log('이미지 로드 성공:', imageUrl);
+        createAndShowModal(imageUrl);
+    };
+    testImg.onerror = function() {
+        console.error('이미지 로드 실패:', imageUrl);
+        alert('이미지를 불러올 수 없습니다. (서버에서 이미지를 찾을 수 없음)');
+    };
+    testImg.src = imageUrl;
+}
+
+// 🆕 이미지 모달 창 닫기 함수
+function closeImageModal() {
+    const modal = document.querySelector('.image-modal');
+    if (modal) {
+        modal.style.animation = 'modalFadeIn 0.3s ease-out reverse';
+        setTimeout(() => {
+            if (modal.parentNode) {
+                modal.remove();
+            }
+        }, 300);
+    }
+}
+// 🆕 모달 생성 및 표시 함수
+function createAndShowModal(imageUrl) {
     // 모달 HTML 생성
     const modal = document.createElement('div');
     modal.className = 'image-modal';
@@ -1816,8 +1867,13 @@ function openImageModal(imageUrl) {
         <div class="image-modal-overlay" onclick="closeImageModal()"></div>
         <div class="image-modal-content">
             <button class="image-modal-close" onclick="closeImageModal()">&times;</button>
+            <div class="image-loading" id="modalImageLoading">
+                <div class="spinner"></div>
+                <p>이미지 로딩 중...</p>
+            </div>
             <img src="${imageUrl}" alt="확대 이미지" class="image-modal-img" 
-                 onerror="this.parentElement.innerHTML='<p style=\\"padding: 20px; text-align: center; color: #666;\\">이미지를 불러올 수 없습니다.</p>'">
+                 onload="onModalImageLoad(this)" 
+                 onerror="onModalImageError(this)">
         </div>
     `;
     
@@ -1888,7 +1944,32 @@ function openImageModal(imageUrl) {
                 max-width: 100%;
                 max-height: 90vh;
                 object-fit: contain;
-                display: block;
+                display: none; /* 처음에는 숨김 */
+            }
+            
+            .image-loading {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 40px;
+                min-width: 200px;
+                min-height: 150px;
+            }
+            
+            .image-loading .spinner {
+                border: 3px solid rgba(102, 126, 234, 0.1);
+                border-top: 3px solid #667eea;
+                border-radius: 50%;
+                width: 30px;
+                height: 30px;
+                animation: spin 1s linear infinite;
+                margin-bottom: 16px;
+            }
+            
+            .image-loading p {
+                color: #6b7280;
+                font-weight: 500;
             }
             
             @keyframes modalFadeIn {
@@ -1899,6 +1980,11 @@ function openImageModal(imageUrl) {
             @keyframes modalSlideIn {
                 from { transform: scale(0.8) translateY(20px); opacity: 0; }
                 to { transform: scale(1) translateY(0); opacity: 1; }
+            }
+            
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
             }
             
             @media (max-width: 480px) {
@@ -1923,19 +2009,24 @@ function openImageModal(imageUrl) {
     document.addEventListener('keydown', handleEscape);
 }
 
-// 🆕 이미지 모달 창 닫기 함수
-function closeImageModal() {
-    const modal = document.querySelector('.image-modal');
-    if (modal) {
-        modal.style.animation = 'modalFadeIn 0.3s ease-out reverse';
-        setTimeout(() => {
-            if (modal.parentNode) {
-                modal.remove();
-            }
-        }, 300);
+// 🆕 모달 이미지 로드 성공 처리
+function onModalImageLoad(img) {
+    console.log('모달 이미지 로드 완료');
+    const loading = document.getElementById('modalImageLoading');
+    if (loading) {
+        loading.style.display = 'none';
     }
+    img.style.display = 'block';
 }
 
+// 🆕 모달 이미지 로드 실패 처리
+function onModalImageError(img) {
+    console.error('모달 이미지 로드 실패:', img.src);
+    const loading = document.getElementById('modalImageLoading');
+    if (loading) {
+        loading.innerHTML = '<p style="padding: 20px; text-align: center; color: #ef4444;">이미지를 불러올 수 없습니다.</p>';
+    }
+}
 
 // 수정된 범인 결과 화면 (displayCriminalResults 함수 교체)
 
@@ -2915,4 +3006,5 @@ window.toggleClue = toggleClue;
 window.closeNoticeAlert = closeNoticeAlert;
 window.goToNotices = goToNotices;
 window.triggerVibrationPattern = triggerVibrationPattern;
-
+window.onModalImageLoad = onModalImageLoad;
+window.onModalImageError = onModalImageError;
