@@ -1603,6 +1603,7 @@ function displayDetectiveResults(container) {
     container.innerHTML = html;
 }
 
+// 개선된 범인 결과 화면 (displayCriminalResults 함수 교체)
 async function displayCriminalResults(container) {
     const kills = gameState.results.filter(function(r) { 
         return r.type === 'kill'; 
@@ -1646,11 +1647,9 @@ async function displayCriminalResults(container) {
     // 암시장 헤더 (클릭 가능)
     html += '<div class="criminal-shop-header" onclick="toggleCriminalShop()">';
     html += '<div class="criminal-shop-title">';
-    html += '<span style="font-size: 1.3em;">💰</span>';
-    html += '<div>';
-    html += '<div>암시장</div>';
-    html += '<div class="shop-money-display">보유: ' + criminalMoney.toLocaleString() + '원</div>';
-    html += '</div>';
+    html += '<span style="font-size: 1.1em;">💰</span>';
+    html += '<span>암시장</span>';
+    html += '<span class="shop-money-display">보유: ' + criminalMoney.toLocaleString() + '원</span>';
     html += '</div>';
     html += '<div class="shop-toggle-icon" id="shopToggleIcon">🔒</div>';
     html += '</div>';
@@ -1708,43 +1707,75 @@ async function displayCriminalResults(container) {
     html += '</div>'; // criminal-shop-content 끝
     html += '</div>'; // criminal-shop-section 끝
 
-    // 기존 제거 대상 목록
+    // 🆕 개선된 제거 대상 목록
     if (kills.length === 0) {
-        html += '<div style="text-align: center; color: #666; margin-top: 30px; padding: 20px;">';
-        html += '<div style="font-size: 3em; margin-bottom: 10px;">🎯</div>';
-        html += '<div style="font-weight: 600; margin-bottom: 5px;">제거 대상이 없습니다</div>';
-        html += '<div style="font-size: 0.9em; opacity: 0.8;">다른 플레이어의 시크릿 코드를 입력해서 대상을 확보하세요</div>';
+        html += '<div style="text-align: center; color: #6b7280; margin-top: 24px; padding: 20px;">';
+        html += '<div style="font-size: 2.5em; margin-bottom: 8px;">🎯</div>';
+        html += '<div style="font-weight: 600; margin-bottom: 4px; color: #374151;">제거 대상이 없습니다</div>';
+        html += '<div style="font-size: 0.85em; opacity: 0.8;">다른 플레이어의 시크릿 코드를 입력해서 대상을 확보하세요</div>';
         html += '</div>';
     } else {
-        html += '<div style="margin-top: 24px;">';
-        html += '<h3 style="color: #1f2937; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">';
+        html += '<div style="margin-top: 20px;">';
+        html += '<h3 style="color: #1f2937; margin-bottom: 12px; display: flex; align-items: center; gap: 6px; font-size: 1.1em;">';
         html += '<span>🎯</span>제거 대상 목록';
         html += '</h3>';
-        html += '<div class="result-list">';
+        html += '<div class="kill-targets-list">';
         
         kills.forEach(function(kill, index) {
-            html += '<div class="result-item">' +
-                    '<div class="result-item-title">' + kill.content + '</div>' +
-                    '<div class="result-item-subtitle">' + kill.timestamp;
+            // 🆕 상태 결정
+            let statusIcon = '';
+            let statusText = '';
+            let statusColor = '';
+            let showButton = false;
             
-            // 보상 정보가 있으면 표시
+            if (kill.executed) {
+                statusIcon = '✅';
+                statusText = '제거 완료';
+                statusColor = '#10b981';
+            } else if (remainingKills > 0 && kill.canKill) {
+                statusIcon = '⏳';
+                statusText = '제거 예정';
+                statusColor = '#f59e0b';
+                showButton = true;
+            } else {
+                statusIcon = '❌';
+                statusText = '기회 없음';
+                statusColor = '#6b7280';
+            }
+            
+            html += '<div class="kill-target-item">';
+            
+            // 메인 정보
+            html += '<div class="kill-target-main">';
+            html += '<div class="kill-target-info">';
+            html += '<div class="kill-target-name">' + kill.targetName + '</div>';
+            html += '<div class="kill-target-details">';
+            
+            // 보상 정보
             if (kill.rewardMoney) {
-                html += ' <span style="color: #10b981; font-weight: 600;">(보상: ' + kill.rewardMoney + '원)</span>';
+                html += '<span class="kill-reward">💰 ' + kill.rewardMoney + '원</span>';
             }
             
-            html += '</div>';
+            // 상태 표시
+            html += '<span class="kill-status" style="color: ' + statusColor + ';">';
+            html += statusIcon + ' ' + statusText;
+            html += '</span>';
             
-            if (kill.canKill && !kill.executed && remainingKills > 0) {
-                html += '<button class="attack-btn" onclick="executeKill(' + index + ')">⚔️ 공격</button>';
-            } else if (kill.executed) {
-                html += '<span style="color: #e74c3c; position: absolute; right: 15px; top: 50%; transform: translateY(-50%); font-weight: 600;">✅ 실행됨</span>';
-            } else if (remainingKills <= 0) {
-                html += '<span style="color: #666; position: absolute; right: 15px; top: 50%; transform: translateY(-50%);">❌ 기회없음</span>';
+            html += '</div>'; // kill-target-details 끝
+            html += '</div>'; // kill-target-info 끝
+            
+            // 버튼 영역
+            if (showButton) {
+                html += '<button class="kill-action-btn" onclick="executeKill(' + index + ')">';
+                html += '⚔️';
+                html += '</button>';
             }
             
-            html += '</div>';
+            html += '</div>'; // kill-target-main 끝
+            html += '</div>'; // kill-target-item 끝
         });
-        html += '</div>';
+        
+        html += '</div>'; // kill-targets-list 끝
         html += '</div>';
     }
     
