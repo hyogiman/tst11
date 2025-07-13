@@ -1450,6 +1450,136 @@
 }
 
 /* ========== 공지사항 실시간 알림 스타일 끝 ========== */
+        
+/* 범인 상점 메인 컨테이너 */
+.criminal-shop-section {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    padding: 20px;
+    border-radius: 12px;
+    margin-bottom: 20px;
+    border-left: 4px solid #ef4444;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.1);
+}
+
+/* 상점 아이템 카드 */
+.shop-item {
+    background: white;
+    padding: 16px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    border: 1px solid #e5e7eb;
+    transition: all 0.3s ease;
+}
+
+/* 상점 아이템 호버 효과 */
+.shop-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+/* 품절된 아이템 스타일 */
+.shop-item-soldout {
+    opacity: 0.6;
+    background: #f9fafb;
+}
+
+/* 돈이 부족한 아이템 스타일 */
+.shop-item-expensive {
+    border-color: #fca5a5;
+    background: #fef2f2;
+}
+
+/* 아이템 헤더 (제목과 가격) */
+.shop-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+
+/* 아이템 제목 */
+.shop-item-title {
+    font-weight: 600;
+    color: #1f2937;
+    font-size: 1.05em;
+}
+
+/* 아이템 가격 */
+.shop-item-price {
+    font-weight: 700;
+    color: #ef4444;
+    font-size: 1.1em;
+}
+
+/* 아이템 설명 */
+.shop-item-description {
+    color: #4b5563;
+    font-size: 0.9em;
+    margin-bottom: 12px;
+    line-height: 1.4;
+}
+
+/* 아이템 상태/버튼 영역 */
+.shop-item-status {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+/* 구매 버튼 */
+.shop-buy-btn {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+}
+
+.shop-buy-btn:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+/* 돈 획득 알림 팝업 */
+.criminal-money-notification .money-notification-content {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.criminal-money-notification .money-icon {
+    font-size: 1.5em;
+}
+
+.criminal-money-notification .money-text {
+    flex: 1;
+    line-height: 1.3;
+}
+
+.criminal-money-notification .total-money {
+    font-size: 0.9em;
+    opacity: 0.9;
+    text-align: right;
+}
+
+/* 모바일 반응형 */
+@media (max-width: 480px) {
+    .criminal-shop-section {
+        padding: 16px;
+    }
+    
+    .shop-item {
+        padding: 12px;
+    }
+    
+    .shop-item-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .criminal-money-notification {
+        right: 10px !important;
+        max-width: 260px !important;
+    }
+}
     </style>
 </head>
 <body>
