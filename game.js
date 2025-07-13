@@ -380,7 +380,7 @@ function showCriminalMoneyNotification(targetRole, amount) {
         <div class="money-notification-content">
             <div class="money-icon">💰</div>
             <div class="money-text">
-                <strong>${roleNames[targetRole]} 제거 보상</strong><br>
+                <strong>🎯 제거 성공!</strong><br>
                 +${amount}원 획득!
                 ${extraMessage}
             </div>
