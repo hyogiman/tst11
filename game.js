@@ -1059,108 +1059,28 @@ async function loadNotices() {
 }
 
 
-// 🆕 완전히 개선된 공지사항 토글 함수 (기존 toggleNotice 함수 교체)
+// 🆕 완전히 단순화된 toggleNotice 함수 (기존 함수 교체)
 function toggleNotice(noticeId) {
     const noticeElement = document.getElementById('notice-' + noticeId);
     if (!noticeElement) return;
     
-    const content = noticeElement.querySelector('.notice-content');
-    if (!content) return;
-    
     const isExpanded = noticeElement.classList.contains('expanded');
     
     if (isExpanded) {
-        // 닫기 - 현재 높이에서 0으로 애니메이션
-        const currentHeight = content.scrollHeight;
-        content.style.maxHeight = currentHeight + 'px';
-        
-        // 강제로 리플로우 발생시키기
-        content.offsetHeight;
-        
-        // 애니메이션으로 닫기
-        content.style.maxHeight = '0px';
-        content.style.padding = '0 16px';
-        content.style.opacity = '0';
-        
-        // 클래스 제거
+        // 닫기
         noticeElement.classList.remove('expanded');
-        
         console.log('공지사항 닫기:', noticeId);
-        
     } else {
         // 다른 모든 공지사항 먼저 닫기
         document.querySelectorAll('.notice-item.expanded').forEach(item => {
             if (item.id !== 'notice-' + noticeId) {
-                const otherContent = item.querySelector('.notice-content');
-                if (otherContent) {
-                    otherContent.style.maxHeight = '0px';
-                    otherContent.style.padding = '0 16px';
-                    otherContent.style.opacity = '0';
-                }
                 item.classList.remove('expanded');
             }
         });
         
         // 클릭한 공지사항 열기
         noticeElement.classList.add('expanded');
-        
-        // 실제 필요한 높이 계산
-        content.style.maxHeight = 'none';
-        content.style.height = 'auto';
-        content.style.padding = '12px 16px';
-        content.style.opacity = '1';
-        
-        const targetHeight = content.scrollHeight;
-        
-        // 애니메이션을 위해 일시적으로 0으로 설정
-        content.style.maxHeight = '0px';
-        content.style.padding = '0 16px';
-        content.style.opacity = '0';
-        
-        // 강제로 리플로우 발생시키기
-        content.offsetHeight;
-        
-        // 애니메이션으로 열기
-        content.style.maxHeight = targetHeight + 'px';
-        content.style.padding = '12px 16px';
-        content.style.opacity = '1';
-        
-        console.log('공지사항 열기:', noticeId, '높이:', targetHeight + 'px');
-        
-        // 🆕 이미지가 있는 경우 로드 완료 후 높이 재조정
-        const images = content.querySelectorAll('img');
-        if (images.length > 0) {
-            let loadedCount = 0;
-            images.forEach(img => {
-                if (img.complete) {
-                    loadedCount++;
-                    if (loadedCount === images.length) {
-                        adjustNoticeHeightAfterImageLoad(content);
-                    }
-                } else {
-                    img.onload = () => {
-                        loadedCount++;
-                        if (loadedCount === images.length) {
-                            adjustNoticeHeightAfterImageLoad(content);
-                        }
-                    };
-                }
-            });
-        }
-    }
-}
-// 🆕 이미지 로드 후 높이 재조정 함수
-function adjustNoticeHeightAfterImageLoad(content) {
-    // 현재 실제 필요한 높이 다시 계산
-    const currentMaxHeight = content.style.maxHeight;
-    content.style.maxHeight = 'none';
-    const newHeight = content.scrollHeight;
-    content.style.maxHeight = currentMaxHeight;
-    
-    // 높이가 변경되었으면 업데이트
-    if (newHeight !== parseInt(currentMaxHeight)) {
-        console.log('이미지 로드 후 높이 재조정:', currentMaxHeight, '→', newHeight + 'px');
-        content.style.maxHeight = newHeight + 'px';
+        console.log('공지사항 열기:', noticeId);
     }
 }
 
