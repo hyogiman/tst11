@@ -180,8 +180,8 @@
             overflow: hidden;
             max-height: 400px;
             overflow-y: auto;
+            position: relative; /* 🆕 추가 */
         }
-
         table {
             width: 100%;
             border-collapse: collapse;
@@ -200,6 +200,8 @@
             color: #495057;
             position: sticky;
             top: 0;
+            z-index: 10; /* 🆕 추가 */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); /* 🆕 추가 - 헤더 아래 그림자 */
         }
 
         .status-alive {
