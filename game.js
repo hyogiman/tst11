@@ -1058,14 +1058,64 @@ async function loadNotices() {
     }
 }
 
-// 공지사항 토글 함수
+// 🆕 수정된 공지사항 토글 함수
 function toggleNotice(noticeId) {
     const noticeElement = document.getElementById('notice-' + noticeId);
     if (noticeElement) {
-        noticeElement.classList.toggle('expanded');
+        const isExpanded = noticeElement.classList.contains('expanded');
+        
+        if (isExpanded) {
+            // 닫기
+            noticeElement.classList.remove('expanded');
+        } else {
+            // 열기
+            noticeElement.classList.add('expanded');
+            
+            // 🆕 이미지가 로드된 후 높이 재계산
+            setTimeout(() => {
+                const images = noticeElement.querySelectorAll('img');
+                let loadedImages = 0;
+                
+                if (images.length === 0) {
+                    return; // 이미지가 없으면 바로 종료
+                }
+                
+                images.forEach(img => {
+                    if (img.complete) {
+                        loadedImages++;
+                        if (loadedImages === images.length) {
+                            adjustNoticeHeight(noticeElement);
+                        }
+                    } else {
+                        img.onload = () => {
+                            loadedImages++;
+                            if (loadedImages === images.length) {
+                                adjustNoticeHeight(noticeElement);
+                            }
+                        };
+                    }
+                });
+            }, 100);
+        }
     }
 }
-
+// 🆕 공지사항 높이 조정 함수
+function adjustNoticeHeight(noticeElement) {
+    const content = noticeElement.querySelector('.notice-content');
+    if (content) {
+        // 잠시 높이를 auto로 설정해서 실제 높이 측정
+        content.style.maxHeight = 'none';
+        content.style.height = 'auto';
+        
+        const actualHeight = content.scrollHeight;
+        
+        // 애니메이션을 위해 다시 설정
+        content.style.height = actualHeight + 'px';
+        content.style.maxHeight = actualHeight + 'px';
+        
+        console.log('공지사항 높이 조정:', actualHeight + 'px');
+    }
+}
 // 공지사항 실시간 리스너 설정
 function setupNoticesListener() {
     // 로그인 상태에서만 공지사항 실시간 감지
