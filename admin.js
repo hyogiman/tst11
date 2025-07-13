@@ -1,3 +1,70 @@
+// 🆕 중복되지 않는 새로운 시크릿 코드 생성 함수
+async function generateUniqueSecretCode() {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let attempts = 0;
+    const maxAttempts = 50;
+    
+    while (attempts < maxAttempts) {
+        // 랜덤 시크릿 코드 생성
+        let newCode = '';
+        for (let i = 0; i < 4; i++) {
+            newCode += chars.charAt(Math.floor(Math.random() * chars.length));
+        }
+        
+        // 기존 시크릿 코드와 중복 확인
+        const isDuplicate = await checkSecretCodeDuplicate(newCode);
+        
+        if (!isDuplicate) {
+            return newCode; // 중복되지 않으면 반환
+        }
+        
+        attempts++;
+    }
+    
+    // 50번 시도해도 중복되지 않는 코드를 찾지 못한 경우
+    throw new Error('새로운 시크릿 코드 생성에 실패했습니다. 잠시 후 다시 시도해주세요.');
+}
+
+// 🆕 시크릿 코드 중복 확인 함수
+async function checkSecretCodeDuplicate(secretCode) {
+    try {
+        // 1. registeredUsers에서 확인
+        const usersSnapshot = await db.collection('registeredUsers')
+            .where('secretCode', '==', secretCode)
+            .limit(1)
+            .get();
+        
+        if (!usersSnapshot.empty) {
+            return true; // 중복됨
+        }
+        
+        // 2. loginCodes에서 확인
+        const loginCodesSnapshot = await db.collection('loginCodes')
+            .where('secretCode', '==', secretCode)
+            .limit(1)
+            .get();
+        
+        if (!loginCodesSnapshot.empty) {
+            return true; // 중복됨
+        }
+        
+        // 3. activePlayers에서 확인
+        const activePlayersSnapshot = await db.collection('activePlayers')
+            .where('secretCode', '==', secretCode)
+            .limit(1)
+            .get();
+        
+        if (!activePlayersSnapshot.empty) {
+            return true; // 중복됨
+        }
+        
+        return false; // 중복되지 않음
+    } catch (error) {
+        console.error('시크릿 코드 중복 확인 오류:', error);
+        return true; // 오류 발생 시 안전하게 중복으로 처리
+    }
+}
+
 // 관리자 상태
 let adminState = {
     isLoggedIn: false,
@@ -639,7 +706,6 @@ async function loadPlayersData() {
     }
 }
 
-// admin.js에서 기존 showPlayerDetail 함수를 다음 코드로 교체하세요
 
 // 플레이어 상세 정보 보기 (징벌 히스토리 포함)
 async function showPlayerDetail(playerId) {
@@ -726,7 +792,20 @@ async function showPlayerDetail(playerId) {
             html += '<p style="color: #6b7280; font-style: italic;">징벌 기록이 없습니다.</p>';
             html += '</div>';
         }
-
+        
+        // 기존 플레이어 상세 정보 표시 후 추가
+        if (userData.revivedAt || userData.revivedBy) {
+            html += '<div class="player-detail">';
+            html += '<h3>🔄 부활 정보</h3>';
+            if (userData.revivedAt) {
+                html += '<p><strong>마지막 부활:</strong> ' + userData.revivedAt.toDate().toLocaleString('ko-KR') + '</p>';
+            }
+            if (userData.revivedBy) {
+                html += '<p><strong>부활 처리자:</strong> ' + userData.revivedBy + '</p>';
+            }
+            html += '</div>';
+        }
+        
         // 기존 활동 기록 섹션
         if (activeData && activeData.results && activeData.results.length > 0) {
             html += '<div class="player-detail"><h3>게임 활동 기록 (' + activeData.results.length + '개)</h3>';
@@ -905,11 +984,13 @@ async function punishPlayer(playerId, playerName) {
         showAlert('플레이어 징벌 처리 중 오류가 발생했습니다.', 'error');
     }
 }
-// 플레이어 부활 (징벌 해제 포함)
+// 플레이어 부활 (징벌 해제 포함) + 시크릿 코드 재생성
 async function revivePlayer(playerId) {
     try {
         // 플레이어 현재 상태 확인
         const activePlayerDoc = await db.collection('activePlayers').doc(playerId).get();
+        const registeredUserDoc = await db.collection('registeredUsers').doc(playerId).get();
+        
         let isPunished = false;
         let playerName = '';
         
@@ -919,25 +1000,53 @@ async function revivePlayer(playerId) {
             playerName = data.name;
         }
         
+        if (!registeredUserDoc.exists) {
+            alert('등록된 사용자 정보를 찾을 수 없습니다.');
+            return;
+        }
+        
         // 징벌된 플레이어인 경우 특별 확인
-        let confirmMessage = '이 플레이어를 부활시키시겠습니까?';
+        let confirmMessage = '이 플레이어를 부활시키시겠습니까?\n\n🔄 시크릿 코드가 새로 생성되어 다른 플레이어들이 다시 상호작용할 수 있게 됩니다.';
         if (isPunished) {
-            confirmMessage = '⚠️ 이 플레이어는 징벌로 인해 사망한 상태입니다.\n\n징벌을 해제하고 부활시키시겠습니까?\n(게임 재참여가 가능해집니다)';
+            confirmMessage = '⚠️ 이 플레이어는 징벌로 인해 사망한 상태입니다.\n\n징벌을 해제하고 부활시키시겠습니까?\n🔄 시크릿 코드가 새로 생성되어 게임 재참여가 가능해집니다.';
         }
         
         if (!confirm(confirmMessage)) {
             return;
         }
 
+        // 🆕 새로운 시크릿 코드 생성
+        let newSecretCode;
+        try {
+            newSecretCode = await generateUniqueSecretCode();
+            console.log('새로운 시크릿 코드 생성됨:', newSecretCode);
+        } catch (error) {
+            alert('시크릿 코드 생성 실패: ' + error.message);
+            return;
+        }
+
+        // 🆕 배치 업데이트 시작
+        const batch = db.batch();
+
+        // 1. registeredUsers 업데이트 (새 시크릿 코드 적용)
+        const userRef = db.collection('registeredUsers').doc(playerId);
+        batch.update(userRef, {
+            secretCode: newSecretCode,
+            revivedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            revivedBy: 'admin'
+        });
+
+        // 2. activePlayers 업데이트
         if (activePlayerDoc.exists) {
             const updateData = {
                 isAlive: true,
-                isActive: false, // 🆕 부활 시 명시적으로 미접속 상태로 설정
+                isActive: false, // 부활 시 명시적으로 미접속 상태로 설정
+                secretCode: newSecretCode, // 🆕 새 시크릿 코드 적용
                 revivedAt: firebase.firestore.FieldValue.serverTimestamp(),
                 revivedBy: 'admin'
             };
             
-            // 🆕 징벌 관련 정보 제거 (모든 사망 관련 정보 정리)
+            // 징벌 관련 정보 제거
             if (isPunished) {
                 updateData.deathReason = firebase.firestore.FieldValue.delete();
                 updateData.punishmentReason = firebase.firestore.FieldValue.delete();
@@ -945,31 +1054,51 @@ async function revivePlayer(playerId) {
                 updateData.punishedAt = firebase.firestore.FieldValue.delete();
             }
             
-            // 🆕 일반 사망 관련 정보도 정리
+            // 일반 사망 관련 정보도 정리
             updateData.deathTime = firebase.firestore.FieldValue.delete();
             updateData.killedBy = firebase.firestore.FieldValue.delete();
             
-            await db.collection('activePlayers').doc(playerId).update(updateData);
-           } else {
-            const userDoc = await db.collection('registeredUsers').doc(playerId).get();
-            if (userDoc.exists) {
-                const userData = userDoc.data();
-                await db.collection('activePlayers').doc(playerId).set({
-                    name: userData.name,
-                    position: userData.position,
-                    role: userData.role,
-                    secretCode: userData.secretCode,
-                    isAlive: true,
-                    isActive: false,
-                    results: [],
-                    killCount: 0,
-                    money: 0,
-                    receivedInteractions: {},
-                    revivedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                    revivedBy: 'admin'
-                });
-            }
+            const activePlayerRef = db.collection('activePlayers').doc(playerId);
+            batch.update(activePlayerRef, updateData);
+        } else {
+            // activePlayers 문서가 없는 경우 새로 생성
+            const userData = registeredUserDoc.data();
+            const activePlayerRef = db.collection('activePlayers').doc(playerId);
+            batch.set(activePlayerRef, {
+                name: userData.name,
+                position: userData.position,
+                role: userData.role,
+                secretCode: newSecretCode, // 🆕 새 시크릿 코드
+                isAlive: true,
+                isActive: false,
+                results: [],
+                killCount: 0,
+                money: 0,
+                receivedInteractions: {},
+                revivedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                revivedBy: 'admin'
+            });
         }
+
+        // 3. 🆕 loginCodes에서 해당 플레이어의 시크릿 코드 업데이트
+        const oldSecretCode = registeredUserDoc.data().secretCode;
+        const loginCodesSnapshot = await db.collection('loginCodes')
+            .where('secretCode', '==', oldSecretCode)
+            .limit(1)
+            .get();
+        
+        if (!loginCodesSnapshot.empty) {
+            const loginCodeDocId = loginCodesSnapshot.docs[0].id;
+            const loginCodeRef = db.collection('loginCodes').doc(loginCodeDocId);
+            batch.update(loginCodeRef, {
+                secretCode: newSecretCode,
+                updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+                updatedBy: 'admin_revive'
+            });
+        }
+
+        // 🆕 배치 커밋
+        await batch.commit();
 
         // 징벌 해제 로그 기록
         if (isPunished) {
@@ -979,7 +1108,9 @@ async function revivePlayer(playerId) {
                 action: 'punishment_revoked',
                 revokedBy: 'admin',
                 revokedAt: firebase.firestore.FieldValue.serverTimestamp(),
-                adminAction: 'revive_punished_player'
+                adminAction: 'revive_punished_player',
+                newSecretCode: newSecretCode, // 🆕 새 시크릿 코드 기록
+                oldSecretCode: oldSecretCode
             });
         }
 
@@ -987,9 +1118,12 @@ async function revivePlayer(playerId) {
         loadOverviewData();
         
         const message = isPunished ? 
-            '플레이어가 부활되고 징벌이 해제되었습니다. (미접속 상태)' : 
-            '플레이어가 부활되었습니다. (미접속 상태)';
+            `플레이어가 부활되고 징벌이 해제되었습니다.\n🔄 새 시크릿 코드: ${newSecretCode}` : 
+            `플레이어가 부활되었습니다.\n🔄 새 시크릿 코드: ${newSecretCode}`;
+        
         showAlert(message, 'success');
+        
+        console.log('부활 완료 - 기존:', oldSecretCode, '→ 새로운:', newSecretCode);
         
     } catch (error) {
         console.error('플레이어 부활 오류:', error);
