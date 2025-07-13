@@ -223,6 +223,135 @@ let gameState = {
     totalMerchants: null,
     merchantRankingListener: null
 };
+// 2단계: 범인 상점 기본 변수 - game.js 상단(gameState 변수 근처)에 추가
+
+// 범인 상점 관련 변수 (gameState 아래에 추가)
+let criminalMoney = 0;
+let criminalShopItems = [
+    {
+        id: 'extra_kills',
+        name: '🔪 암살 기회 확장',
+        description: '제거 기회를 3회 추가로 획득합니다',
+        price: 150,
+        available: true,
+        maxPurchases: 2, // 최대 2번까지 구매 가능
+        purchased: 0
+    }
+];
+
+// 범인 돈 초기화 함수
+function initializeCriminalMoney() {
+    if (gameState.role === 'criminal') {
+        loadCriminalMoney();
+    }
+}
+
+// 서버에서 범인 돈 정보 로드
+async function loadCriminalMoney() {
+    try {
+        const playerDoc = await db.collection('activePlayers').doc(gameState.player.loginCode).get();
+        if (playerDoc.exists) {
+            const data = playerDoc.data();
+            criminalMoney = data.criminalMoney || 0;
+            
+            // 구매 이력도 복원
+            if (data.criminalShopPurchases) {
+                criminalShopItems.forEach(item => {
+                    const purchased = data.criminalShopPurchases[item.id] || 0;
+                    item.purchased = purchased;
+                    if (purchased >= item.maxPurchases) {
+                        item.available = false;
+                    }
+                });
+            }
+            
+            console.log('범인 돈 로드 완료:', criminalMoney + '원');
+        }
+    } catch (error) {
+        console.error('범인 돈 정보 로드 오류:', error);
+    }
+}
+// 3단계: 범인 돈 획득 시스템 - game.js에 추가
+
+// 범인 돈 업데이트 (제거 성공 시 호출)
+async function updateCriminalMoney(targetRole, amount) {
+    try {
+        criminalMoney += amount;
+        
+        // 서버에 업데이트
+        await db.collection('activePlayers').doc(gameState.player.loginCode).update({
+            criminalMoney: criminalMoney,
+            updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        console.log('범인 돈 업데이트:', amount + '원 획득, 총:', criminalMoney + '원');
+        
+        // 돈 획득 알림 표시
+        showCriminalMoneyNotification(targetRole, amount);
+        
+        // 결과 화면이 열려있으면 업데이트
+        if (document.getElementById('resultScreen').classList.contains('active')) {
+            setupResultScreen();
+        }
+        
+    } catch (error) {
+        console.error('범인 돈 업데이트 오류:', error);
+    }
+}
+
+// 돈 획득 알림 팝업 표시
+function showCriminalMoneyNotification(targetRole, amount) {
+    const roleNames = {
+        'merchant': '상인',
+        'detective': '탐정'
+    };
+    
+    const notification = document.createElement('div');
+    notification.className = 'criminal-money-notification';
+    notification.innerHTML = `
+        <div class="money-notification-content">
+            <div class="money-icon">💰</div>
+            <div class="money-text">
+                <strong>${roleNames[targetRole]} 제거 보상</strong><br>
+                +${amount}원 획득!
+            </div>
+            <div class="total-money">총 ${criminalMoney}원</div>
+        </div>
+    `;
+    
+    // 팝업 스타일 적용
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+        padding: 15px 20px;
+        border-radius: 12px;
+        box-shadow: 0 8px 25px rgba(239, 68, 68, 0.3);
+        z-index: 9999;
+        transform: translateX(300px);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        max-width: 280px;
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // 슬라이드 인 애니메이션
+    setTimeout(() => {
+        notification.style.transform = 'translateX(0)';
+    }, 100);
+    
+    // 3초 후 슬라이드 아웃
+    setTimeout(() => {
+        notification.style.transform = 'translateX(300px)';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 300);
+    }, 3000);
+}
 
 // 기본 시크릿 코드
 const tempSecretCodes = {
@@ -614,6 +743,11 @@ setupRealtimeListener();
     }
     
     console.log('로그인 완료!');
+    
+    // 범인인 경우 돈 정보 로드
+    if (gameState.role === 'criminal') {
+    await loadCriminalMoney();
+    }    
 }
 
 // 상호작용 미션이나 시크릿 코드 내용 변경 감지
@@ -1370,10 +1504,12 @@ async function setupResultScreen() {
             resultTitle.textContent = '🔍 수집한 단서들';
             displayDetectiveResults(resultContent);
             break;
+
         case 'criminal':
-            resultTitle.textContent = '🔪 제거 대상 및 기록';
+            resultTitle.textContent = '🔪 제거 대상 및 암시장';
             await displayCriminalResults(resultContent);
             break;
+
         case 'merchant':
             resultTitle.textContent = '💰 수익 현황';
             displayMerchantResults(resultContent);
@@ -1427,34 +1563,94 @@ function displayDetectiveResults(container) {
     container.innerHTML = html;
 }
 
+// 6단계: 범인 결과 화면에 상점 추가 - game.js에 새 함수 추가
+
 async function displayCriminalResults(container) {
     const kills = gameState.results.filter(function(r) { 
         return r.type === 'kill'; 
     });
     
-    // 실제 killCount를 서버에서 가져오기
+    // 서버에서 최신 데이터 가져오기
     let actualKillCount = 0;
+    let maxKills = 3;
     try {
         const myPlayerDoc = await db.collection('activePlayers').doc(gameState.player.loginCode).get();
         if (myPlayerDoc.exists) {
-            actualKillCount = myPlayerDoc.data().killCount || 0;
+            const data = myPlayerDoc.data();
+            actualKillCount = data.killCount || 0;
+            maxKills = data.maxKills || 3;
+            criminalMoney = data.criminalMoney || 0;
+            
+            // 구매 이력 복원
+            if (data.criminalShopPurchases) {
+                criminalShopItems.forEach(item => {
+                    const purchased = data.criminalShopPurchases[item.id] || 0;
+                    item.purchased = purchased;
+                    if (purchased >= item.maxPurchases) {
+                        item.available = false;
+                    } else {
+                        item.available = true;
+                    }
+                });
+            }
         }
     } catch (error) {
-        console.error('killCount 가져오기 오류:', error);
+        console.error('범인 데이터 가져오기 오류:', error);
     }
     
-    const remainingKills = 3 - actualKillCount;
+    const remainingKills = maxKills - actualKillCount;
     
-    let html = '<div class="status-message">남은 제거 기회: ' + remainingKills + '회</div>';
+    let html = '<div class="status-message">제거 기회: ' + remainingKills + '/' + maxKills + '회 남음</div>';
+    
+    // 🆕 범인 상점 섹션 (새로 추가)
+    html += '<div class="criminal-shop-section">';
+    html += '<h3 style="color: #ef4444; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">';
+    html += '<span>💰</span>암시장 (보유: ' + criminalMoney + '원)';
+    html += '</h3>';
+    
+    // 상점 아이템들 표시
+    criminalShopItems.forEach(function(item) {
+        const canAfford = criminalMoney >= item.price;
+        const isAvailable = item.available;
+        
+        html += '<div class="shop-item ' + (!isAvailable ? 'shop-item-soldout' : !canAfford ? 'shop-item-expensive' : '') + '">';
+        html += '<div class="shop-item-header">';
+        html += '<div class="shop-item-title">' + item.name + '</div>';
+        html += '<div class="shop-item-price">' + item.price + '원</div>';
+        html += '</div>';
+        html += '<div class="shop-item-description">' + item.description + '</div>';
+        html += '<div class="shop-item-status">';
+        
+        if (!isAvailable) {
+            html += '<span style="color: #666;">구매 완료 (' + item.purchased + '/' + item.maxPurchases + ')</span>';
+        } else if (!canAfford) {
+            html += '<span style="color: #ef4444;">돈이 부족합니다</span>';
+        } else {
+            html += '<button class="btn shop-buy-btn" onclick="purchaseCriminalItem(\'' + item.id + '\')" style="width: auto; padding: 8px 16px; font-size: 14px;">구매하기</button>';
+        }
+        
+        html += '</div>';
+        html += '</div>';
+    });
+    
+    html += '</div>';
 
+    // 기존 제거 대상 목록
     if (kills.length === 0) {
-        html += '<p style="text-align: center; color: #666;">아직 제거 대상이 없습니다.</p>';
+        html += '<p style="text-align: center; color: #666; margin-top: 20px;">아직 제거 대상이 없습니다.</p>';
     } else {
-        html += '<div class="result-list">';
+        html += '<div class="result-list" style="margin-top: 20px;">';
         kills.forEach(function(kill, index) {
             html += '<div class="result-item">' +
                     '<div class="result-item-title">' + kill.content + '</div>' +
-                    '<div class="result-item-subtitle">' + kill.timestamp + '</div>';
+                    '<div class="result-item-subtitle">' + kill.timestamp;
+            
+            // 보상 정보가 있으면 표시
+            if (kill.rewardMoney) {
+                html += ' (보상: ' + kill.rewardMoney + '원)';
+            }
+            
+            html += '</div>';
             
             if (kill.canKill && !kill.executed && remainingKills > 0) {
                 html += '<button class="attack-btn" onclick="executeKill(' + index + ')">공격</button>';
@@ -1858,25 +2054,42 @@ async function executeKill(killIndex) {
     const killTimeSeconds = killTimer % 60;
     const timeText = killTimeSeconds === 0 ? killTimeMinutes + '분' : killTimeMinutes + '분 ' + killTimeSeconds + '초';
 
-    if (!confirm('정말로 ' + kill.targetName + '을(를) 제거하시겠습니까? ' + timeText + ' 후 대상이 게임에서 완전히 제외됩니다.')) {
+    if (!confirm('정말로 ' + kill.targetName + '을(를) 제거하시겠습니까? ' + timeText + ' 후 대상이 게임에서 완전히 제외되고 보상을 받습니다.')) {
         return;
     }
 
     try {
         const myPlayerId = gameState.player.loginCode;
         
-        // killCount 증가 (공격 버튼을 눌렀을 때)
+        // killCount 및 maxKills 확인
         const myPlayerDoc = await db.collection('activePlayers').doc(myPlayerId).get();
         const myPlayerData = myPlayerDoc.data();
         const currentKillCount = myPlayerData.killCount || 0;
+        const maxKills = myPlayerData.maxKills || 3; // 상점에서 구매했으면 늘어남
         
-        if (currentKillCount >= 3) {
-            alert('이미 최대 제거 횟수(3회)에 도달했습니다.');
+        if (currentKillCount >= maxKills) {
+            alert(`이미 최대 제거 횟수(${maxKills}회)에 도달했습니다.`);
             return;
         }
 
+        // 🆕 보상 계산 (새로 추가된 부분)
+        let rewardMoney = 0;
+        if (gameState.role === 'criminal') {
+            if (kill.targetRole === 'merchant') {
+                rewardMoney = Math.floor(Math.random() * 11) + 10; // 10~20원
+            } else if (kill.targetRole === 'detective') {
+                rewardMoney = Math.floor(Math.random() * 51) + 50; // 50~100원
+            }
+        }
+
         kill.executed = true;
+        kill.rewardMoney = rewardMoney; // 보상 정보 저장
+        
+        // content에 보상 정보 추가
         kill.content = kill.targetName + ' 제거 예정 (' + timeText + ' 후 게임 종료)';
+        if (rewardMoney > 0) {
+            kill.content += ' - 보상: ' + rewardMoney + '원';
+        }
 
         // killCount 증가 및 결과 업데이트
         await db.collection('activePlayers').doc(myPlayerId).update({
@@ -1884,14 +2097,18 @@ async function executeKill(killIndex) {
             killCount: currentKillCount + 1
         });
 
-        // 지정된 시간 후 대상 플레이어 제거 (isActive는 그대로 두고 isAlive만 false)
+        // 🆕 범인인 경우 보상 지급 (새로 추가된 부분)
+        if (gameState.role === 'criminal' && rewardMoney > 0) {
+            await updateCriminalMoney(kill.targetRole, rewardMoney);
+        }
+
+        // 지정된 시간 후 대상 플레이어 제거
         setTimeout(async function() {
             try {
                 await db.collection('activePlayers').doc(kill.targetPlayerId).update({
                     isAlive: false,
                     deathTime: firebase.firestore.FieldValue.serverTimestamp(),
                     killedBy: myPlayerId
-                    // isActive는 그대로 둠 (admin에서 상태 확인을 위해)
                 });
                 console.log('플레이어 ' + kill.targetPlayerId + ' 제거 완료');
             } catch (error) {
@@ -1899,10 +2116,16 @@ async function executeKill(killIndex) {
             }
         }, killTimer * 1000);
 
-        alert('제거 명령이 실행되었습니다. ' + timeText + ' 후 대상이 게임에서 제외됩니다.');
+        let alertMessage = '제거 명령이 실행되었습니다. ' + timeText + ' 후 대상이 게임에서 제외됩니다.';
+        if (rewardMoney > 0) {
+            alertMessage += ' (' + rewardMoney + '원 보상 지급됨)';
+        }
+        alert(alertMessage);
         
-        // 🆕 공격 성공 진동
-        triggerVibrationPattern('alert');       
+        // 공격 성공 진동
+        if (typeof triggerVibrationPattern === 'function') {
+            triggerVibrationPattern('alert');
+        }
         
         setupResultScreen().catch(function(error) {
             console.error('결과 화면 새로고침 오류:', error);
@@ -2008,3 +2231,73 @@ document.addEventListener('DOMContentLoaded', function() {
         mySecretToggle.addEventListener('click', toggleMySecret);
     }
 });
+// 4단계: 범인 상점 구매 시스템 - game.js에 추가
+
+// 범인 상점 아이템 구매 함수
+async function purchaseCriminalItem(itemId) {
+    const item = criminalShopItems.find(i => i.id === itemId);
+    
+    if (!item) {
+        alert('존재하지 않는 아이템입니다.');
+        return;
+    }
+    
+    if (!item.available) {
+        alert('이미 최대 구매 수량에 도달했습니다.');
+        return;
+    }
+    
+    if (criminalMoney < item.price) {
+        alert(`돈이 부족합니다. (필요: ${item.price}원, 보유: ${criminalMoney}원)`);
+        return;
+    }
+    
+    if (!confirm(`정말로 "${item.name}"을(를) ${item.price}원에 구매하시겠습니까?`)) {
+        return;
+    }
+    
+    try {
+        // 돈 차감
+        criminalMoney -= item.price;
+        item.purchased += 1;
+        
+        // 최대 구매량 도달 시 구매 불가 처리
+        if (item.purchased >= item.maxPurchases) {
+            item.available = false;
+        }
+        
+        // 서버 업데이트 데이터 준비
+        const updateData = {
+            criminalMoney: criminalMoney,
+            [`criminalShopPurchases.${itemId}`]: item.purchased
+        };
+        
+        // 아이템 효과 적용
+        if (itemId === 'extra_kills') {
+            // 최대 킬 횟수 증가 (기본 3회에서 +3회)
+            const currentMaxKills = 3;
+            updateData.maxKills = currentMaxKills + (3 * item.purchased);
+        }
+        
+        // 서버에 저장
+        await db.collection('activePlayers').doc(gameState.player.loginCode).update(updateData);
+        
+        // 성공 알림
+        alert(`구매 완료! "${item.name}"을(를) 획득했습니다.`);
+        
+        // 구매 성공 진동 (진동 함수가 있는 경우)
+        if (typeof triggerVibrationPattern === 'function') {
+            triggerVibrationPattern('success');
+        }
+        
+        // 결과 화면 새로고침
+        setupResultScreen();
+        
+    } catch (error) {
+        console.error('아이템 구매 오류:', error);
+        alert('구매 중 오류가 발생했습니다.');
+    }
+}
+
+// 전역 스코프에 함수 등록 (HTML에서 onclick으로 호출하기 위해)
+window.purchaseCriminalItem = purchaseCriminalItem;
