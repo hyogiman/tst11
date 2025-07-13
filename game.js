@@ -1007,7 +1007,7 @@ async function loadInteractionMission() {
     }
 }
 
-// 🆕 수정된 공지사항 로드 함수 (이미지 포함)
+// 🆕 수정된 공지사항 로드 함수 (기존 loadNotices 함수 교체)
 async function loadNotices() {
     try {
         const noticesSnapshot = await db.collection('notices')
@@ -1041,7 +1041,8 @@ async function loadNotices() {
                         'onclick="openImageModal(\'' + notice.imageUrl + '\')" ' +
                         'onerror="this.style.display=\'none\'; console.error(\'이미지 로드 실패:\', this.src);">' +
                         '</div>' : '') +
-                    '<div class="notice-text">' + notice.content + '</div>' +
+                    // 🆕 줄바꿈 처리된 텍스트
+                    '<div class="notice-text">' + formatTextWithLineBreaks(notice.content) + '</div>' +
                     '</div>' +
                     '</div>';
         });
@@ -1058,7 +1059,7 @@ async function loadNotices() {
     }
 }
 
-// 🆕 수정된 공지사항 토글 함수
+// 🆕 개선된 공지사항 토글 함수
 function toggleNotice(noticeId) {
     const noticeElement = document.getElementById('notice-' + noticeId);
     if (noticeElement) {
@@ -1067,9 +1068,18 @@ function toggleNotice(noticeId) {
         if (isExpanded) {
             // 닫기
             noticeElement.classList.remove('expanded');
+            console.log('공지사항 닫기:', noticeId);
         } else {
-            // 열기
+            // 다른 모든 공지사항 먼저 닫기
+            document.querySelectorAll('.notice-item').forEach(item => {
+                if (item.id !== 'notice-' + noticeId) {
+                    item.classList.remove('expanded');
+                }
+            });
+            
+            // 클릭한 공지사항 열기
             noticeElement.classList.add('expanded');
+            console.log('공지사항 열기:', noticeId);
             
             // 🆕 이미지가 로드된 후 높이 재계산
             setTimeout(() => {
@@ -1115,6 +1125,11 @@ function adjustNoticeHeight(noticeElement) {
         
         console.log('공지사항 높이 조정:', actualHeight + 'px');
     }
+}
+
+function formatTextWithLineBreaks(text) {
+    if (!text) return '';
+    return text.replace(/\n/g, '<br>');
 }
 // 공지사항 실시간 리스너 설정
 function setupNoticesListener() {
@@ -1736,7 +1751,7 @@ function showDeathMessage() {
     gameStatus.innerHTML = '<div class="status-message error">⚠️ 범인에게 제거되었습니다! 게임에서 제외됩니다.</div>';
 }
 
-// 🆕 시크릿 코드 결과 표시 함수 수정 (이미지 포함)
+// 🆕 수정된 시크릿 코드 결과 표시 함수 (기존 displayCodeResult 교체)
 async function displayCodeResult(result) {
     const resultDiv = document.getElementById('codeResult');
     
@@ -1762,13 +1777,14 @@ async function displayCodeResult(result) {
     let html = '<div class="status-message">' +
                '<strong>' + result.title + '</strong><br>' +
                imageHtml + // 🆕 이미지 먼저 표시
-               result.content + '</div>';
+               // 🆕 줄바꿈 처리된 내용
+               formatTextWithLineBreaks(result.content) + '</div>';
     resultDiv.innerHTML = html;
     
     triggerVibrationPattern('success');
 }
 
-// 🆕 수정된 탐정 결과 표시 함수 (이미지 포함)
+// 🆕 수정된 탐정 결과 표시 함수 (기존 displayDetectiveResults 교체)
 function displayDetectiveResults(container) {
     const clues = gameState.results.filter(function(r) { 
         return r.type === 'clue' || r.type === 'evidence'; 
@@ -1791,7 +1807,8 @@ function displayDetectiveResults(container) {
         html += '<div class="clue-toggle">▼</div>';
         html += '</div>';
         html += '<div class="clue-content">';
-        html += '<div class="clue-text">' + clue.content + '</div>';
+        // 🆕 줄바꿈 처리된 단서 내용
+        html += '<div class="clue-text">' + formatTextWithLineBreaks(clue.content) + '</div>';
         html += '</div>';
         html += '</div>';
     });
@@ -2942,3 +2959,4 @@ window.getCriminalShopStatus = getCriminalShopStatus;
 window.openCriminalShop = openCriminalShop;
 window.openImageModal = openImageModal;
 window.closeImageModal = closeImageModal;
+window.toggleNotice = toggleNotice;
