@@ -1603,7 +1603,8 @@ function displayDetectiveResults(container) {
     container.innerHTML = html;
 }
 
-// 개선된 범인 결과 화면 (displayCriminalResults 함수 교체)
+// 수정된 범인 결과 화면 (displayCriminalResults 함수 교체)
+
 async function displayCriminalResults(container) {
     const kills = gameState.results.filter(function(r) { 
         return r.type === 'kill'; 
@@ -1722,24 +1723,26 @@ async function displayCriminalResults(container) {
         html += '<div class="kill-targets-list">';
         
         kills.forEach(function(kill, index) {
-            // 🆕 상태 결정
+            // 🔧 상태 결정 로직 수정
             let statusIcon = '';
             let statusText = '';
             let statusColor = '';
             let showButton = false;
             
+            console.log('Kill 체크:', kill.targetName, 'canKill:', kill.canKill, 'executed:', kill.executed);
+            
             if (kill.executed) {
                 statusIcon = '✅';
                 statusText = '제거 완료';
                 statusColor = '#10b981';
-            } else if (remainingKills > 0 && kill.canKill) {
+            } else if (kill.canKill && remainingKills > 0) {
                 statusIcon = '⏳';
                 statusText = '제거 예정';
                 statusColor = '#f59e0b';
                 showButton = true;
             } else {
                 statusIcon = '❌';
-                statusText = '기회 없음';
+                statusText = remainingKills <= 0 ? '기회 없음' : '대기 중';
                 statusColor = '#6b7280';
             }
             
@@ -1751,9 +1754,20 @@ async function displayCriminalResults(container) {
             html += '<div class="kill-target-name">' + kill.targetName + '</div>';
             html += '<div class="kill-target-details">';
             
-            // 보상 정보
-            if (kill.rewardMoney) {
-                html += '<span class="kill-reward">💰 ' + kill.rewardMoney + '원</span>';
+            // 보상 정보 (executed 되었고 보상이 있을 때만 표시)
+            if (kill.rewardMoney && kill.executed) {
+                html += '<span class="kill-reward">💰 ' + kill.rewardMoney + '원 획득</span>';
+            } else if (kill.targetRole) {
+                // 아직 실행 안 된 경우 예상 보상 표시
+                let expectedReward = '';
+                if (kill.targetRole === 'merchant') {
+                    expectedReward = '40~80원';
+                } else if (kill.targetRole === 'detective') {
+                    expectedReward = '70~120원';
+                }
+                if (expectedReward) {
+                    html += '<span class="kill-reward">💰 ' + expectedReward + '</span>';
+                }
             }
             
             // 상태 표시
@@ -1764,7 +1778,7 @@ async function displayCriminalResults(container) {
             html += '</div>'; // kill-target-details 끝
             html += '</div>'; // kill-target-info 끝
             
-            // 버튼 영역
+            // 🔧 버튼 영역 수정
             if (showButton) {
                 html += '<button class="kill-action-btn" onclick="executeKill(' + index + ')">';
                 html += '⚔️';
