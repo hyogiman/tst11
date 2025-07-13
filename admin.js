@@ -116,20 +116,26 @@ async function loadOverviewData() {
         const registeredSnapshot = await db.collection('registeredUsers').get();
         const registeredCount = registeredSnapshot.size;
 
-        const activeSnapshot = await db.collection('activePlayers')
-            .where('isActive', '==', true)
-            .get();
-        const activeCount = activeSnapshot.size;
-
-        let aliveCount = 0;
-        let deadCount = 0;
+        // 🆕 모든 activePlayers를 가져와서 정확한 상태 분류
+        const allActiveSnapshot = await db.collection('activePlayers').get();
         
-        activeSnapshot.forEach(doc => {
+        let activeCount = 0;  // 실제 접속중
+        let aliveCount = 0;   // 생존자
+        let deadCount = 0;    // 사망자
+        
+        allActiveSnapshot.forEach(doc => {
             const data = doc.data();
+            
+            // 🆕 생존/사망 판단 (isAlive 기준)
             if (data.isAlive) {
                 aliveCount++;
             } else {
                 deadCount++;
+            }
+            
+            // 🆕 실제 접속 판단 (isActive이면서 isAlive인 경우만)
+            if (data.isActive && data.isAlive) {
+                activeCount++;
             }
         });
 
@@ -538,29 +544,40 @@ async function loadPlayersData() {
             let showPunishButton = false;
             
             if (activeData) {
-                if (activeData.isActive) {
-                    if (activeData.isAlive) {
-                        statusText = '생존';
+                // 🆕 먼저 생존/사망 상태 확인
+                if (activeData.isAlive) {
+                    // 생존자인 경우
+                    if (activeData.isActive) {
+                        statusText = '접속중';
+                        statusClass = 'status-online';
+                    } else {
+                        statusText = '생존(미접속)';
                         statusClass = 'status-alive';
-                        showPunishButton = true; // 생존 상태일 때만 징벌 가능
-                    } else {
-                        statusText = '사망';
-                        statusClass = 'status-dead';
-                        showReviveButton = true;
                     }
+                    showPunishButton = true; // 생존자만 징벌 가능
                 } else {
-                    if (activeData.isAlive) {
-                        statusText = '미접속';
-                        statusClass = '';
-                        showPunishButton = true; // 미접속이지만 생존 상태면 징벌 가능
+                    // 🆕 사망자인 경우 - 징벌 여부 확인
+                    const isPunished = activeData.deathReason === 'punishment';
+                    
+                    if (isPunished) {
+                        if (activeData.isActive) {
+                            statusText = '징벌됨(강제종료됨)';
+                        } else {
+                            statusText = '징벌됨';
+                        }
+                        statusClass = 'status-punished';
                     } else {
-                        statusText = '사망(미접속)';
+                        if (activeData.isActive) {
+                            statusText = '사망(접속중)';
+                        } else {
+                            statusText = '사망';
+                        }
                         statusClass = 'status-dead';
-                        showReviveButton = true;
                     }
+                    showReviveButton = true; // 모든 사망자는 부활 가능
                 }
             } else {
-                statusText = '미접속';
+                statusText = '미참여';
                 statusClass = '';
                 // activeData가 없으면 징벌 불가 (아직 게임에 참여하지 않음)
             }
@@ -606,6 +623,14 @@ async function loadPlayersData() {
     } catch (error) {
         console.error('플레이어 데이터 로드 오류:', error);
     }
+        console.log('플레이어 상태 디버깅:', {
+        playerId: doc.id,
+        isAlive: activeData?.isAlive,
+        isActive: activeData?.isActive,
+        deathReason: activeData?.deathReason,
+        statusText: statusText,
+        statusClass: statusClass
+    });
 }
 
 // admin.js에서 기존 showPlayerDetail 함수를 다음 코드로 교체하세요
@@ -901,12 +926,12 @@ async function revivePlayer(playerId) {
         if (activePlayerDoc.exists) {
             const updateData = {
                 isAlive: true,
-                isActive: false,
+                isActive: false, // 🆕 부활 시 명시적으로 미접속 상태로 설정
                 revivedAt: firebase.firestore.FieldValue.serverTimestamp(),
                 revivedBy: 'admin'
             };
             
-            // 징벌 관련 정보 제거
+            // 🆕 징벌 관련 정보 제거 (모든 사망 관련 정보 정리)
             if (isPunished) {
                 updateData.deathReason = firebase.firestore.FieldValue.delete();
                 updateData.punishmentReason = firebase.firestore.FieldValue.delete();
@@ -914,8 +939,12 @@ async function revivePlayer(playerId) {
                 updateData.punishedAt = firebase.firestore.FieldValue.delete();
             }
             
+            // 🆕 일반 사망 관련 정보도 정리
+            updateData.deathTime = firebase.firestore.FieldValue.delete();
+            updateData.killedBy = firebase.firestore.FieldValue.delete();
+            
             await db.collection('activePlayers').doc(playerId).update(updateData);
-        } else {
+           } else {
             const userDoc = await db.collection('registeredUsers').doc(playerId).get();
             if (userDoc.exists) {
                 const userData = userDoc.data();
