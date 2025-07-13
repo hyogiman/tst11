@@ -31,7 +31,21 @@ function setupRealtimeListener() {
                     // 상대가 나에게 상호작용했을 때도 카운터 업데이트
                     updateInteractionCount();
                 }
-                
+            // 🆕 범인인 경우 돈 정보도 실시간 동기화
+            if (gameState.role === 'criminal') {
+                const serverMoney = data.criminalMoney || 0;
+                if (criminalMoney !== serverMoney) {
+                    console.log('실시간 돈 동기화:', criminalMoney, '→', serverMoney);
+                    criminalMoney = serverMoney;
+                }
+            }
+            
+            // receivedInteractions 데이터 동기화
+            if (data.receivedInteractions) {
+                gameState.receivedInteractions = data.receivedInteractions;
+                updateInteractionCount();
+            }
+            
                 // 역할이나 시크릿 코드가 변경된 경우 게임 상태 업데이트
                 if (data.role !== gameState.role || data.secretCode !== gameState.secretCode) {
                     console.log('관리자에 의해 역할/시크릿 코드가 변경되었습니다.');
@@ -797,13 +811,6 @@ setupRealtimeListener();
     
     console.log('로그인 완료!');
     
-    // 범인인 경우 돈 정보 로드
-    if (gameState.role === 'criminal') {
-    await loadCriminalMoney();
-    console.log('범인 로그인 완료 - 보유 금액:', criminalMoney + '원'); // 디버깅용
-    }    
-    console.log('로그인 완료!');
-}
 
 // 상호작용 미션이나 시크릿 코드 내용 변경 감지
 async function checkForContentUpdates() {
