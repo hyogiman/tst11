@@ -733,7 +733,7 @@ async function register() {
         const isGameActive = await checkGameStatus();
         
         if (isGameActive) {
-            // 게임이 시작된 경우에만 활성 플레이어로 등록
+             // 게임이 시작된 경우에만 활성 플레이어로 등록
             await db.collection('activePlayers').doc(loginCode).set({
                 name: userData.name,
                 position: userData.position,
@@ -742,11 +742,13 @@ async function register() {
                 reconnectPassword: userData.reconnectPassword,
                 isAlive: true,
                 isActive: true,
-                results: [],
-                killCount: 0,
-                money: 0,
-                usedCodes: [], // 사용된 코드 목록 초기화
-                receivedInteractions: {},
+                results: previousData.results || [],
+                killCount: previousData.killCount || 0,
+                money: previousData.money || 0,
+                usedCodes: previousData.usedCodes || [],
+                receivedInteractions: previousData.receivedInteractions || {},
+                // 🆕 maxKills 설정 (관리자 설정 고려)
+                maxKills: await getDefaultMaxKills(),
                 loginTime: firebase.firestore.FieldValue.serverTimestamp()
             });
         }
@@ -812,7 +814,18 @@ async function register() {
         console.error('등록 오류:', error);
     }
 }
-
+// 🆕 기본 maxKills 값을 가져오는 헬퍼 함수
+async function getDefaultMaxKills() {
+    try {
+        const settingsDoc = await db.collection('gameSettings').doc('config').get();
+        if (settingsDoc.exists && settingsDoc.data().maxKills) {
+            return settingsDoc.data().maxKills;
+        }
+    } catch (error) {
+        console.error('기본 maxKills 가져오기 오류:', error);
+    }
+    return 3; // 기본값
+}
 // 로그인 완료 처리 공통 함수
 async function completeLogin() {
     document.getElementById('loginLoading').style.display = 'none';
@@ -1709,16 +1722,31 @@ async function displayCriminalResults(container) {
         return r.type === 'kill'; 
     });
     
-    // 서버에서 최신 데이터 가져오기
-    let actualKillCount = 0;
-    let maxKills = 3;
-    try {
-        const myPlayerDoc = await db.collection('activePlayers').doc(gameState.player.loginCode).get();
-        if (myPlayerDoc.exists) {
-            const data = myPlayerDoc.data();
-            actualKillCount = data.killCount || 0;
-            maxKills = data.maxKills || 3;
-            criminalMoney = data.criminalMoney || 0;
+        // 서버에서 최신 데이터 가져오기
+        let actualKillCount = 0;
+        let maxKills = 3;
+        
+        // 🆕 관리자 설정에서 기본 maxKills 가져오기
+        try {
+            const settingsDoc = await db.collection('gameSettings').doc('config').get();
+            if (settingsDoc.exists && settingsDoc.data().maxKills) {
+                maxKills = settingsDoc.data().maxKills;
+            }
+        } catch (error) {
+            console.error('maxKills 설정 가져오기 오류:', error);
+        }
+        
+        try {
+            const myPlayerDoc = await db.collection('activePlayers').doc(gameState.player.loginCode).get();
+            if (myPlayerDoc.exists) {
+                const data = myPlayerDoc.data();
+                actualKillCount = data.killCount || 0;
+                
+                // 🆕 플레이어별 maxKills (기본값과 비교해서 더 큰 값 사용)
+                const playerMaxKills = data.maxKills || maxKills;
+                maxKills = Math.max(maxKills, playerMaxKills);
+                
+                criminalMoney = data.criminalMoney || 0;
             
             // 구매 이력 복원
             if (data.criminalShopPurchases) {
@@ -1879,7 +1907,7 @@ async function displayCriminalResults(container) {
             
             // 🔧 버튼 영역 수정
             if (showButton) {
-                html += '<button class="kill-action-btn" onclick="executeKill(' + index + ')">';
+                html += '<button class="kill-action-btn" onclick="(' + index + ')">';
                 html += '⚔️';
                 html += '</button>';
             }
@@ -2310,7 +2338,32 @@ async function executeKill(killIndex) {
         const myPlayerDoc = await db.collection('activePlayers').doc(myPlayerId).get();
         const myPlayerData = myPlayerDoc.data();
         const currentKillCount = myPlayerData.killCount || 0;
-        const maxKills = myPlayerData.maxKills || 3; // 상점에서 구매했으면 늘어남
+        
+        // 🆕 관리자 설정에서 기본 maxKills 가져오기
+        let baseMaxKills = 3; // 기본값
+        try {
+            const settingsDoc = await db.collection('gameSettings').doc('config').get();
+            if (settingsDoc.exists && settingsDoc.data().maxKills) {
+                baseMaxKills = settingsDoc.data().maxKills;
+            }
+        } catch (error) {
+            console.error('maxKills 설정 가져오기 오류:', error);
+        }
+        
+        // 🆕 플레이어별 maxKills 계산 (기본값 + 상점 구매 보너스)
+        let maxKills = myPlayerData.maxKills || baseMaxKills;
+        
+        // 🆕 만약 플레이어의 maxKills가 현재 설정보다 낮으면 업데이트
+        if (maxKills < baseMaxKills) {
+            maxKills = baseMaxKills;
+            
+            // 🆕 플레이어 데이터 업데이트
+            await db.collection('activePlayers').doc(myPlayerId).update({
+                maxKills: maxKills
+            });
+            
+            console.log('플레이어 maxKills 업데이트:', maxKills);
+        }
         
         if (currentKillCount >= maxKills) {
             alert(`이미 최대 제거 횟수(${maxKills}회)에 도달했습니다.`);
@@ -2527,9 +2580,21 @@ async function purchaseCriminalItem(itemId) {
         
         // 아이템 효과 적용
         if (itemId === 'extra_kills') {
-            // 최대 킬 횟수 증가 (기본 3회에서 +3회)
-            const currentMaxKills = 3;
-            updateData.maxKills = currentMaxKills + (3 * item.purchased);
+            // 🆕 관리자 설정에서 기본 maxKills 가져오기
+            let baseMaxKills = 3;
+            try {
+                const settingsDoc = await db.collection('gameSettings').doc('config').get();
+                if (settingsDoc.exists && settingsDoc.data().maxKills) {
+                    baseMaxKills = settingsDoc.data().maxKills;
+                }
+            } catch (error) {
+                console.error('maxKills 설정 가져오기 오류:', error);
+            }
+            
+            // 🆕 최대 킬 횟수 증가 (관리자 설정 기본값 + 구매한 만큼)
+            updateData.maxKills = baseMaxKills + (3 * item.purchased);
+            
+            console.log('아이템 구매 후 maxKills:', updateData.maxKills);
         }
         
         // 서버에 저장
