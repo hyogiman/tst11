@@ -2238,17 +2238,17 @@ async function executeKill(killIndex) {
             kill.content += ' - 보상: ' + rewardMoney + '원';
         }
 
-        // killCount 증가 및 결과 업데이트
-        await db.collection('activePlayers').doc(myPlayerId).update({
-            results: gameState.results,
-            killCount: currentKillCount + 1
-        });
 
         // 🆕 범인인 경우 보상 지급 (새로 추가된 부분)
         if (gameState.role === 'criminal' && rewardMoney > 0) {
             await updateCriminalMoney(kill.targetRole, rewardMoney);
         }
-
+        
+        // killCount 증가 및 결과 업데이트
+        await db.collection('activePlayers').doc(myPlayerId).update({
+            results: gameState.results,
+            killCount: currentKillCount + 1
+        });
         // 지정된 시간 후 대상 플레이어 제거
         setTimeout(async function() {
             try {
