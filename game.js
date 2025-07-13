@@ -252,7 +252,11 @@ async function loadCriminalMoney() {
         const playerDoc = await db.collection('activePlayers').doc(gameState.player.loginCode).get();
         if (playerDoc.exists) {
             const data = playerDoc.data();
+            
+            // 🔧 criminalMoney 복원 (기본값 0)
             criminalMoney = data.criminalMoney || 0;
+            
+            console.log('범인 돈 로드 완료:', criminalMoney + '원'); // 디버깅용
             
             // 구매 이력도 복원
             if (data.criminalShopPurchases) {
@@ -263,12 +267,21 @@ async function loadCriminalMoney() {
                         item.available = false;
                     }
                 });
+                console.log('상점 구매 이력 복원:', data.criminalShopPurchases); // 디버깅용
             }
             
-            console.log('범인 돈 로드 완료:', criminalMoney + '원');
+            // 🆕 gameState에도 동기화
+            if (!gameState.criminalMoney) {
+                gameState.criminalMoney = criminalMoney;
+            }
+            
+        } else {
+            console.log('플레이어 문서가 존재하지 않음 - criminalMoney를 0으로 초기화');
+            criminalMoney = 0;
         }
     } catch (error) {
         console.error('범인 돈 정보 로드 오류:', error);
+        criminalMoney = 0;
     }
 }
 // 3단계: 범인 돈 획득 시스템 - game.js에 추가
@@ -787,7 +800,9 @@ setupRealtimeListener();
     // 범인인 경우 돈 정보 로드
     if (gameState.role === 'criminal') {
     await loadCriminalMoney();
+    console.log('범인 로그인 완료 - 보유 금액:', criminalMoney + '원'); // 디버깅용
     }    
+    console.log('로그인 완료!');
 }
 
 // 상호작용 미션이나 시크릿 코드 내용 변경 감지
