@@ -1752,7 +1752,7 @@ async function displayCriminalResults(container) {
             // 메인 정보
             html += '<div class="kill-target-main">';
             html += '<div class="kill-target-info">';
-            html += '<div class="kill-target-name">' +' '+ kill.targetName + (kill.targetPosition || '직위 미상') + '</div>';
+            html += '<div class="kill-target-name">' + kill.targetName + ' (' + (kill.targetPosition || '직위 미상') + ')</div>';
             html += '<div class="kill-target-details">';
             
             // 보상 정보 (executed 되었고 보상이 있을 때만 표시)
