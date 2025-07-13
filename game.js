@@ -526,8 +526,7 @@ function toggleMySecret() {
     }
 }
 
-// 전역 스코프에 함수 등록
-window.toggleMySecret = toggleMySecret;
+
 
 // 게임 상태 확인
 async function checkGameStatus() {
@@ -1059,71 +1058,109 @@ async function loadNotices() {
     }
 }
 
-// 🆕 개선된 공지사항 토글 함수
+
+// 🆕 완전히 개선된 공지사항 토글 함수 (기존 toggleNotice 함수 교체)
 function toggleNotice(noticeId) {
     const noticeElement = document.getElementById('notice-' + noticeId);
-    if (noticeElement) {
-        const isExpanded = noticeElement.classList.contains('expanded');
+    if (!noticeElement) return;
+    
+    const content = noticeElement.querySelector('.notice-content');
+    if (!content) return;
+    
+    const isExpanded = noticeElement.classList.contains('expanded');
+    
+    if (isExpanded) {
+        // 닫기 - 현재 높이에서 0으로 애니메이션
+        const currentHeight = content.scrollHeight;
+        content.style.maxHeight = currentHeight + 'px';
         
-        if (isExpanded) {
-            // 닫기
-            noticeElement.classList.remove('expanded');
-            console.log('공지사항 닫기:', noticeId);
-        } else {
-            // 다른 모든 공지사항 먼저 닫기
-            document.querySelectorAll('.notice-item').forEach(item => {
-                if (item.id !== 'notice-' + noticeId) {
-                    item.classList.remove('expanded');
+        // 강제로 리플로우 발생시키기
+        content.offsetHeight;
+        
+        // 애니메이션으로 닫기
+        content.style.maxHeight = '0px';
+        content.style.padding = '0 16px';
+        content.style.opacity = '0';
+        
+        // 클래스 제거
+        noticeElement.classList.remove('expanded');
+        
+        console.log('공지사항 닫기:', noticeId);
+        
+    } else {
+        // 다른 모든 공지사항 먼저 닫기
+        document.querySelectorAll('.notice-item.expanded').forEach(item => {
+            if (item.id !== 'notice-' + noticeId) {
+                const otherContent = item.querySelector('.notice-content');
+                if (otherContent) {
+                    otherContent.style.maxHeight = '0px';
+                    otherContent.style.padding = '0 16px';
+                    otherContent.style.opacity = '0';
+                }
+                item.classList.remove('expanded');
+            }
+        });
+        
+        // 클릭한 공지사항 열기
+        noticeElement.classList.add('expanded');
+        
+        // 실제 필요한 높이 계산
+        content.style.maxHeight = 'none';
+        content.style.height = 'auto';
+        content.style.padding = '12px 16px';
+        content.style.opacity = '1';
+        
+        const targetHeight = content.scrollHeight;
+        
+        // 애니메이션을 위해 일시적으로 0으로 설정
+        content.style.maxHeight = '0px';
+        content.style.padding = '0 16px';
+        content.style.opacity = '0';
+        
+        // 강제로 리플로우 발생시키기
+        content.offsetHeight;
+        
+        // 애니메이션으로 열기
+        content.style.maxHeight = targetHeight + 'px';
+        content.style.padding = '12px 16px';
+        content.style.opacity = '1';
+        
+        console.log('공지사항 열기:', noticeId, '높이:', targetHeight + 'px');
+        
+        // 🆕 이미지가 있는 경우 로드 완료 후 높이 재조정
+        const images = content.querySelectorAll('img');
+        if (images.length > 0) {
+            let loadedCount = 0;
+            images.forEach(img => {
+                if (img.complete) {
+                    loadedCount++;
+                    if (loadedCount === images.length) {
+                        adjustNoticeHeightAfterImageLoad(content);
+                    }
+                } else {
+                    img.onload = () => {
+                        loadedCount++;
+                        if (loadedCount === images.length) {
+                            adjustNoticeHeightAfterImageLoad(content);
+                        }
+                    };
                 }
             });
-            
-            // 클릭한 공지사항 열기
-            noticeElement.classList.add('expanded');
-            console.log('공지사항 열기:', noticeId);
-            
-            // 🆕 이미지가 로드된 후 높이 재계산
-            setTimeout(() => {
-                const images = noticeElement.querySelectorAll('img');
-                let loadedImages = 0;
-                
-                if (images.length === 0) {
-                    return; // 이미지가 없으면 바로 종료
-                }
-                
-                images.forEach(img => {
-                    if (img.complete) {
-                        loadedImages++;
-                        if (loadedImages === images.length) {
-                            adjustNoticeHeight(noticeElement);
-                        }
-                    } else {
-                        img.onload = () => {
-                            loadedImages++;
-                            if (loadedImages === images.length) {
-                                adjustNoticeHeight(noticeElement);
-                            }
-                        };
-                    }
-                });
-            }, 100);
         }
     }
 }
-// 🆕 공지사항 높이 조정 함수
-function adjustNoticeHeight(noticeElement) {
-    const content = noticeElement.querySelector('.notice-content');
-    if (content) {
-        // 잠시 높이를 auto로 설정해서 실제 높이 측정
-        content.style.maxHeight = 'none';
-        content.style.height = 'auto';
-        
-        const actualHeight = content.scrollHeight;
-        
-        // 애니메이션을 위해 다시 설정
-        content.style.height = actualHeight + 'px';
-        content.style.maxHeight = actualHeight + 'px';
-        
-        console.log('공지사항 높이 조정:', actualHeight + 'px');
+// 🆕 이미지 로드 후 높이 재조정 함수
+function adjustNoticeHeightAfterImageLoad(content) {
+    // 현재 실제 필요한 높이 다시 계산
+    const currentMaxHeight = content.style.maxHeight;
+    content.style.maxHeight = 'none';
+    const newHeight = content.scrollHeight;
+    content.style.maxHeight = currentMaxHeight;
+    
+    // 높이가 변경되었으면 업데이트
+    if (newHeight !== parseInt(currentMaxHeight)) {
+        console.log('이미지 로드 후 높이 재조정:', currentMaxHeight, '→', newHeight + 'px');
+        content.style.maxHeight = newHeight + 'px';
     }
 }
 
@@ -1280,9 +1317,6 @@ function triggerVibrationPattern(type) {
     }
 }
 
-// 🆕 전역 스코프에 함수 등록
-window.triggerVibrationPattern = triggerVibrationPattern;
-
 
 // 🆕 공지사항 알림 닫기 함수
 function closeNoticeAlert() {
@@ -1302,10 +1336,6 @@ function goToNotices() {
     closeNoticeAlert();
     showScreen('home'); // 홈 화면으로 이동 (공지사항이 홈에 있음)
 }
-
-// 🆕 전역 스코프에 함수들 등록
-window.closeNoticeAlert = closeNoticeAlert;
-window.goToNotices = goToNotices;
 
 // 폼 전환 함수들
 function showRegisterForm() {
@@ -2571,8 +2601,7 @@ function toggleClue(clueId) {
     }
 }
 
-// 🆕 전역 스코프에 함수 등록
-window.toggleClue = toggleClue;
+
 
 async function executeKill(killIndex) {
     const kill = gameState.results.filter(function(r) { 
@@ -2894,8 +2923,8 @@ async function purchaseCriminalItem(itemId) {
     }
 }
 
-// 전역 스코프에 함수 등록 (HTML에서 onclick으로 호출하기 위해)
-window.purchaseCriminalItem = purchaseCriminalItem;
+
+
 // 2단계: 암시장 토글 함수 - game.js에 추가
 
 // 암시장 토글 함수
@@ -2954,9 +2983,16 @@ function openCriminalShop() {
 }
 
 // 전역 스코프에 함수 등록
+window.toggleMySecret = toggleMySecret;
+window.toggleNotice = toggleNotice; // 🆕 업데이트된 함수
+window.purchaseCriminalItem = purchaseCriminalItem;
 window.toggleCriminalShop = toggleCriminalShop;
 window.getCriminalShopStatus = getCriminalShopStatus;
 window.openCriminalShop = openCriminalShop;
 window.openImageModal = openImageModal;
 window.closeImageModal = closeImageModal;
-window.toggleNotice = toggleNotice;
+window.toggleClue = toggleClue;
+window.closeNoticeAlert = closeNoticeAlert;
+window.goToNotices = goToNotices;
+window.triggerVibrationPattern = triggerVibrationPattern;
+
