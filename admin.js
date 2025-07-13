@@ -1305,6 +1305,37 @@ async function saveSettings() {
             updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
             updatedBy: 'admin'
         });
+        // 🆕 기존 범인들의 maxKills 업데이트 (상점 구매 보너스 유지)
+        try {
+            const criminalsSnapshot = await db.collection('activePlayers')
+                .where('role', '==', 'criminal')
+                .get();
+            
+            const batch = db.batch();
+            let updateCount = 0;
+            
+            criminalsSnapshot.forEach(doc => {
+                const data = doc.data();
+                const currentMaxKills = data.maxKills || 3;
+                
+                // 🆕 상점 구매로 증가된 횟수 계산 (기존 maxKills - 기본값)
+                const bonusKills = Math.max(0, currentMaxKills - 3);
+                const newMaxKills = maxKills + bonusKills;
+                
+                if (newMaxKills !== currentMaxKills) {
+                    batch.update(doc.ref, { maxKills: newMaxKills });
+                    updateCount++;
+                }
+            });
+            
+            if (updateCount > 0) {
+                await batch.commit();
+                console.log(`${updateCount}명의 범인 maxKills 업데이트 완료`);
+            }
+            
+        } catch (error) {
+            console.error('범인 maxKills 업데이트 오류:', error);
+        }
 
         showAlert('설정이 저장되었습니다. (미션 쿨타임: ' + 
                  (missionResetCooldown === 0 ? '제한 없음' : missionResetCooldown + '초') + ')', 'success');
