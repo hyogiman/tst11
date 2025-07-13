@@ -1240,28 +1240,28 @@ body {
     transform: translateY(-1px);
 }
 
-/* ========== 범인 암시장 시스템 ========== */
+/* ========== 범인 암시장 시스템 (개선된 버전) ========== */
 /* 암시장 메인 컨테이너 */
 .criminal-shop-section {
-    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-    border-radius: 16px;
-    margin-bottom: 20px;
-    border-left: 4px solid #ef4444;
-    box-shadow: 0 8px 25px rgba(239, 68, 68, 0.15);
+    background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+    border-radius: 12px;
+    margin-bottom: 16px;
+    border-left: 3px solid #6b7280;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
     overflow: hidden;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* 암시장 헤더 (클릭 가능한 부분) */
 .criminal-shop-header {
-    padding: 20px;
+    padding: 14px 18px;
     cursor: pointer;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
     color: white;
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
 }
@@ -1274,7 +1274,7 @@ body {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
     transition: left 0.5s ease;
 }
 
@@ -1283,45 +1283,49 @@ body {
 }
 
 .criminal-shop-header:hover {
-    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    background: linear-gradient(135deg, #4b5563 0%, #374151 100%);
     transform: translateY(-1px);
 }
 
 /* 확장된 상태의 헤더 */
 .criminal-shop-section.expanded .criminal-shop-header {
-    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    border-left-color: #10b981;
 }
 
 .criminal-shop-section.expanded .criminal-shop-header:hover {
-    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+    background: linear-gradient(135deg, #047857 0%, #065f46 100%);
 }
 
-/* 암시장 제목 */
+/* 암시장 제목 (한 줄로 컴팩트하게) */
 .criminal-shop-title {
     display: flex;
     align-items: center;
-    gap: 12px;
-    font-weight: 700;
-    font-size: 1.2em;
+    gap: 8px;
+    font-weight: 600;
+    font-size: 1em;
     letter-spacing: 0.3px;
+    flex: 1;
 }
 
 .shop-money-display {
     font-size: 0.9em;
-    opacity: 0.9;
+    opacity: 0.95;
     font-weight: 500;
+    margin-left: 4px;
 }
 
 /* 토글 아이콘 */
 .shop-toggle-icon {
-    font-size: 1.4em;
+    font-size: 1.2em;
     transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
     display: inline-block;
+    opacity: 0.8;
 }
 
 .criminal-shop-section.expanded .shop-toggle-icon {
-    transform: rotate(180deg) scale(1.1);
+    transform: rotate(180deg) scale(1.05);
+    opacity: 1;
 }
 
 /* 암시장 내용 (접히는 부분) */
@@ -1329,21 +1333,21 @@ body {
     max-height: 0;
     overflow: hidden;
     transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+    background: white;
 }
 
 .criminal-shop-section.expanded .criminal-shop-content {
-    max-height: 500px;
-    padding: 20px;
+    max-height: 400px;
+    padding: 16px;
 }
 
-/* 상점 아이템 카드 */
+/* 상점 아이템 카드 (컴팩트 버전) */
 .shop-item {
-    background: white;
-    padding: 18px;
-    border-radius: 12px;
-    margin-bottom: 16px;
-    border: 2px solid #e5e7eb;
+    background: #fafafa;
+    padding: 14px 16px;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    border: 1px solid #e5e7eb;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     position: relative;
     overflow: hidden;
@@ -1356,7 +1360,7 @@ body {
     left: -100%;
     width: 100%;
     height: 100%;
-    background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+    background: linear-gradient(90deg, transparent, rgba(75, 85, 99, 0.08), transparent);
     transition: left 0.6s ease;
 }
 
@@ -1365,27 +1369,28 @@ body {
 }
 
 .shop-item:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
-    border-color: #667eea;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.08);
+    border-color: #9ca3af;
+    background: white;
 }
 
 /* 구매 가능한 아이템 강조 */
 .shop-item.affordable {
     border-color: #10b981;
-    background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
 }
 
 .shop-item.affordable:hover {
     border-color: #059669;
-    transform: translateY(-4px);
-    box-shadow: 0 15px 35px rgba(16, 185, 129, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(16, 185, 129, 0.12);
 }
 
 /* 품절된 아이템 스타일 */
 .shop-item-soldout {
-    opacity: 0.7;
-    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+    opacity: 0.65;
+    background: #f9fafb;
     border-color: #d1d5db;
     position: relative;
 }
@@ -1393,16 +1398,16 @@ body {
 .shop-item-soldout::after {
     content: '✓';
     position: absolute;
-    top: 10px;
-    right: 15px;
+    top: 8px;
+    right: 12px;
     color: #10b981;
-    font-size: 1.5em;
+    font-size: 1.2em;
     font-weight: bold;
 }
 
 /* 돈이 부족한 아이템 스타일 */
 .shop-item-expensive {
-    border-color: #fca5a5;
+    border-color: #f87171;
     background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
     position: relative;
 }
@@ -1410,9 +1415,9 @@ body {
 .shop-item-expensive::after {
     content: '💸';
     position: absolute;
-    top: 10px;
-    right: 15px;
-    font-size: 1.3em;
+    top: 8px;
+    right: 12px;
+    font-size: 1.1em;
     opacity: 0.7;
 }
 
@@ -1421,29 +1426,29 @@ body {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 12px;
+    margin-bottom: 8px;
 }
 
 .shop-item-title {
-    font-weight: 700;
+    font-weight: 600;
     color: #1f2937;
-    font-size: 1.1em;
+    font-size: 1em;
     letter-spacing: -0.025em;
 }
 
 .shop-item-price {
-    font-weight: 800;
-    color: #ef4444;
-    font-size: 1.2em;
+    font-weight: 700;
+    color: #dc2626;
+    font-size: 1.1em;
     font-family: 'Inter', monospace;
 }
 
 /* 아이템 설명 */
 .shop-item-description {
     color: #4b5563;
-    font-size: 0.95em;
-    margin-bottom: 16px;
-    line-height: 1.5;
+    font-size: 0.85em;
+    margin-bottom: 12px;
+    line-height: 1.4;
     font-weight: 400;
 }
 
@@ -1455,32 +1460,32 @@ body {
     gap: 8px;
 }
 
-/* 구매 버튼 */
+/* 구매 버튼 (차분한 색상) */
 .shop-buy-btn {
-    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
-    border-radius: 8px;
-    padding: 10px 20px;
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+    border-radius: 6px;
+    padding: 8px 16px;
     font-weight: 600;
-    font-size: 0.9em;
+    font-size: 0.85em;
     letter-spacing: 0.3px;
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .shop-buy-btn:hover {
-    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-    box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
-    transform: translateY(-2px);
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+    box-shadow: 0 4px 15px rgba(220, 38, 38, 0.3);
+    transform: translateY(-1px);
 }
 
 .shop-buy-btn:active {
     transform: translateY(0);
-    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
 }
 
 /* 상태 텍스트 */
 .shop-status-text {
-    font-size: 0.9em;
+    font-size: 0.8em;
     font-weight: 500;
 }
 
@@ -1489,14 +1494,14 @@ body {
 }
 
 .shop-status-text.expensive {
-    color: #ef4444;
+    color: #dc2626;
 }
 
-/* 애니메이션 효과 */
+/* 애니메이션 효과 (부드럽게) */
 @keyframes shopReveal {
     0% {
         opacity: 0;
-        transform: translateY(20px) scale(0.95);
+        transform: translateY(15px) scale(0.98);
     }
     100% {
         opacity: 1;
@@ -1505,22 +1510,22 @@ body {
 }
 
 .criminal-shop-section.expanded .shop-item {
-    animation: shopReveal 0.5s ease-out forwards;
+    animation: shopReveal 0.4s ease-out forwards;
 }
 
 .criminal-shop-section.expanded .shop-item:nth-child(1) {
-    animation-delay: 0.1s;
+    animation-delay: 0.05s;
 }
 
 .criminal-shop-section.expanded .shop-item:nth-child(2) {
-    animation-delay: 0.2s;
+    animation-delay: 0.1s;
 }
 
 .criminal-shop-section.expanded .shop-item:nth-child(3) {
-    animation-delay: 0.3s;
+    animation-delay: 0.15s;
 }
 
-/* 돈 획득 알림 팝업 */
+/* 돈 획득 알림 팝업 (차분한 색상) */
 .criminal-money-notification .money-notification-content {
     display: flex;
     align-items: center;
@@ -1528,7 +1533,7 @@ body {
 }
 
 .criminal-money-notification .money-icon {
-    font-size: 1.5em;
+    font-size: 1.4em;
 }
 
 .criminal-money-notification .money-text {
@@ -1542,141 +1547,16 @@ body {
     text-align: right;
 }
 
-/* ========== 모바일 최적화 ========== */
+/* ========== 모바일 최적화 (암시장 부분만) ========== */
 @media (max-width: 480px) {
-    .container {
-        width: 100%;
-        border-radius: 0;
-    }
-    
-    .content {
-        padding: 20px 16px;
-    }
-    
-    .nav-item {
-        font-size: 0.75em;
-        padding: 14px 6px;
-    }
-
-    .nav-icon {
-        font-size: 1.2em;
-    }
-
-    .login-form {
-        padding: 24px 20px;
-        margin-top: 16px;
-    }
-
-    .role-card {
-        padding: 24px 20px;
-        margin: 16px 0;
-    }
-
-    .code-input-section {
-        padding: 20px;
-    }
-
-    /* 상인 랭킹 모바일 */
-    .merchant-ranking-info {
-        padding: 16px;
-        margin-bottom: 16px;
-    }
-
-    .rank-number {
-        font-size: 2.5em;
-    }
-
-    .total-merchants {
-        font-size: 1.6em;
-    }
-
-    .rank-separator,
-    .rank-suffix {
-        font-size: 1.3em;
-    }
-    
-    .ranking-toast {
-        top: 15px;
-        max-width: 320px;
-        width: 85%;
-    }
-    
-    .toast-content {
-        padding: 14px 16px;
-        gap: 10px;
-        font-size: 0.9em;
-    }
-
-    /* 단서 모바일 */
-    .clue-header {
-        padding: 12px 16px;
-    }
-    
-    .clue-item.expanded .clue-content {
-        padding: 12px 16px 16px;
-    }
-    
-    .clue-title {
-        font-size: 1em;
-        margin-right: 8px;
-    }
-    
-    .clue-timestamp {
-        font-size: 0.8em;
-        margin-right: 8px;
-    }
-
-    /* 공지사항 모바일 */
-    .notice-alert {
-        padding: 16px;
-    }
-
-    .notice-alert-content {
-        max-width: none;
-    }
-
-    .notice-alert-header {
-        padding: 14px 16px;
-    }
-
-    .notice-alert-title {
-        font-size: 1em;
-    }
-
-    .notice-alert-body {
-        padding: 16px;
-    }
-
-    .notice-alert-subject {
-        font-size: 1em;
-        margin-bottom: 10px;
-    }
-
-    .notice-alert-text {
-        font-size: 0.9em;
-        max-height: 100px;
-    }
-
-    .notice-alert-actions {
-        padding: 12px 16px;
-        flex-direction: column;
-        gap: 8px;
-    }
-
-    .notice-alert-btn {
-        width: 100%;
-        padding: 12px;
-    }
-
     /* 암시장 모바일 */
     .criminal-shop-header {
-        padding: 16px;
+        padding: 12px 16px;
     }
     
     .criminal-shop-title {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 4px;
+        font-size: 0.95em;
+        gap: 6px;
     }
     
     .shop-money-display {
@@ -1684,22 +1564,22 @@ body {
     }
     
     .criminal-shop-section.expanded .criminal-shop-content {
-        padding: 16px;
+        padding: 14px;
     }
     
     .shop-item {
-        padding: 16px;
-        margin-bottom: 12px;
+        padding: 12px 14px;
+        margin-bottom: 10px;
     }
     
     .shop-item-header {
         flex-direction: column;
         align-items: flex-start;
-        gap: 6px;
+        gap: 4px;
     }
     
     .shop-toggle-icon {
-        font-size: 1.2em;
+        font-size: 1.1em;
     }
     
     .criminal-money-notification {
@@ -1708,57 +1588,23 @@ body {
     }
 }
 
-/* ========== 미세 애니메이션 효과 ========== */
-@media (prefers-reduced-motion: no-preference) {
-    .form-group input:focus {
-        animation: focusPulse 0.3s ease-out;
-    }
-
-    @keyframes focusPulse {
-        0% { transform: scale(1); }
-        50% { transform: scale(1.02); }
-        100% { transform: scale(1); }
-    }
-
-    .btn:hover {
-        animation: buttonHover 0.3s ease-out;
-    }
-
-    @keyframes buttonHover {
-        0% { transform: translateY(0); }
-        50% { transform: translateY(-3px); }
-        100% { transform: translateY(-2px); }
-    }
-}
-
-/* ========== 접근성 개선 - 애니메이션 줄이기 옵션 ========== */
+/* 접근성 개선 */
 @media (prefers-reduced-motion: reduce) {
     .criminal-shop-section,
     .criminal-shop-header,
     .criminal-shop-content,
     .shop-toggle-icon,
-    .shop-item,
-    .clue-item,
-    .clue-content,
-    .clue-toggle,
-    .notice-alert,
-    .notice-alert-content,
-    .notice-alert-btn {
+    .shop-item {
         transition: none;
     }
     
-    .shop-item,
-    .clue-text {
+    .shop-item {
         animation: none;
     }
     
     .criminal-shop-header::before,
     .shop-item::before {
         display: none;
-    }
-    
-    .notice-alert-icon {
-        animation: none;
     }
 }
     </style>
