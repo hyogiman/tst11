@@ -502,19 +502,40 @@ body {
 }
 
 .notices-list {
-    max-height: 200px;
-    overflow-y: auto;
+    /* 🆕 높이 제한 제거하고 자동 크기 조정 */
+    max-height: none; /* 기존: 200px; 제거 */
+    overflow-y: visible; /* 기존: auto; 변경 */
     scrollbar-width: thin;
     scrollbar-color: #d1d5db transparent;
 }
+        
+/* 🆕 공지사항 이미지 스타일 추가 */
+.notice-image-container {
+    margin-bottom: 12px;
+    text-align: center;
+}
+.notice-image-container img {
+    max-width: 100%;
+    max-height: 250px; /* 🆕 최대 높이 제한 */
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
 
+.notice-image-container img:hover {
+    transform: scale(1.02);
+}
+        
+/* 🆕 공지사항 아이템 높이 자동 조정 */
 .notice-item {
     background: white;
     border-radius: 8px;
     margin-bottom: 8px;
     border: 1px solid #e5e7eb;
     transition: all 0.3s ease;
-    overflow: hidden;
+    overflow: visible; /* 🆕 overflow 해제 */
 }
 
 .notice-header {
@@ -552,13 +573,14 @@ body {
     padding: 0 16px;
     max-height: 0;
     overflow: hidden;
-    transition: all 0.3s ease;
+    transition: all 0.4s ease; /* 🆕 애니메이션 시간 늘림 */
     background: #f9fafb;
 }
 
 .notice-item.expanded .notice-content {
-    max-height: 200px;
+    max-height: none; /* 🆕 높이 제한 완전 제거 */
     padding: 12px 16px;
+    overflow: visible; /* 🆕 스크롤 해제 */
 }
 
 .notice-text {
