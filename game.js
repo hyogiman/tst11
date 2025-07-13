@@ -1737,9 +1737,9 @@ async function displayCriminalResults(container) {
                 statusText = '제거 완료';
                 statusColor = '#10b981';
             } else if (kill.canKill && remainingKills > 0) {
-                statusIcon = '⏳';
-                statusText = '제거 예정';
-                statusColor = '#f59e0b';
+                statusIcon = '🗡️';
+                statusText = '제거 가능';
+                statusColor = '#666666';
                 showButton = true;
             } else {
                 statusIcon = '❌';
