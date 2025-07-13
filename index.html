@@ -1454,39 +1454,123 @@
 /* 범인 상점 메인 컨테이너 */
 .criminal-shop-section {
     background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-    padding: 20px;
-    border-radius: 12px;
+    border-radius: 16px;
     margin-bottom: 20px;
     border-left: 4px solid #ef4444;
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.1);
+    box-shadow: 0 8px 25px rgba(239, 68, 68, 0.15);
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* 암시장 헤더 (클릭 가능한 부분) */
+.criminal-shop-header {
+    padding: 20px;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+/* 헤더 호버 효과 */
+.criminal-shop-header::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+    transition: left 0.5s ease;
+}
+
+.criminal-shop-header:hover::before {
+    left: 100%;
+}
+
+.criminal-shop-header:hover {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    transform: translateY(-1px);
 }
 
 /* 상점 아이템 카드 */
 .shop-item {
     background: white;
-    padding: 16px;
-    border-radius: 8px;
-    margin-bottom: 12px;
-    border: 1px solid #e5e7eb;
-    transition: all 0.3s ease;
+    padding: 18px;
+    border-radius: 12px;
+    margin-bottom: 16px;
+    border: 2px solid #e5e7eb;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
 }
 
 /* 상점 아이템 호버 효과 */
-.shop-item:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.shop-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.1), transparent);
+    transition: left 0.6s ease;
 }
 
+.shop-item:hover::before {
+    left: 100%;
+}
+
+.shop-item:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15);
+    border-color: #667eea;
+}
+/* 구매 가능한 아이템 강조 */
+.shop-item.affordable {
+    border-color: #10b981;
+    background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 100%);
+}
+
+.shop-item.affordable:hover {
+    border-color: #059669;
+    transform: translateY(-4px);
+    box-shadow: 0 15px 35px rgba(16, 185, 129, 0.2);
+}
 /* 품절된 아이템 스타일 */
 .shop-item-soldout {
-    opacity: 0.6;
-    background: #f9fafb;
+    opacity: 0.7;
+    background: linear-gradient(135deg, #f9fafb 0%, #f3f4f6 100%);
+    border-color: #d1d5db;
+    position: relative;
+}
+.shop-item-soldout::after {
+    content: '✓';
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    color: #10b981;
+    font-size: 1.5em;
+    font-weight: bold;
 }
 
 /* 돈이 부족한 아이템 스타일 */
 .shop-item-expensive {
     border-color: #fca5a5;
-    background: #fef2f2;
+    background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
+    position: relative;
+}
+
+.shop-item-expensive::after {
+    content: '💸';
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    font-size: 1.3em;
+    opacity: 0.7;
 }
 
 /* 아이템 헤더 (제목과 가격) */
@@ -1494,29 +1578,31 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 8px;
+    margin-bottom: 12px;
 }
-
 /* 아이템 제목 */
 .shop-item-title {
-    font-weight: 600;
+    font-weight: 700;
     color: #1f2937;
-    font-size: 1.05em;
+    font-size: 1.1em;
+    letter-spacing: -0.025em;
 }
 
 /* 아이템 가격 */
 .shop-item-price {
-    font-weight: 700;
+    font-weight: 800;
     color: #ef4444;
-    font-size: 1.1em;
+    font-size: 1.2em;
+    font-family: 'Inter', monospace;
 }
 
 /* 아이템 설명 */
 .shop-item-description {
     color: #4b5563;
-    font-size: 0.9em;
-    margin-bottom: 12px;
-    line-height: 1.4;
+    font-size: 0.95em;
+    margin-bottom: 16px;
+    line-height: 1.5;
+    font-weight: 400;
 }
 
 /* 아이템 상태/버튼 영역 */
@@ -1524,19 +1610,125 @@
     display: flex;
     justify-content: flex-end;
     align-items: center;
+    gap: 8px;
+}
+.shop-status-text {
+    font-size: 0.9em;
+    font-weight: 500;
 }
 
+.shop-status-text.soldout {
+    color: #10b981;
+}
+
+.shop-status-text.expensive {
+    color: #ef4444;
+}
+/* 애니메이션 효과 */
+@keyframes shopReveal {
+    0% {
+        opacity: 0;
+        transform: translateY(20px) scale(0.95);
+    }
+    100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.criminal-shop-section.expanded .shop-item {
+    animation: shopReveal 0.5s ease-out forwards;
+}
+
+.criminal-shop-section.expanded .shop-item:nth-child(1) {
+    animation-delay: 0.1s;
+}
+
+.criminal-shop-section.expanded .shop-item:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.criminal-shop-section.expanded .shop-item:nth-child(3) {
+    animation-delay: 0.3s;
+}
+
+/* 모바일 최적화 개선 */
+@media (max-width: 480px) {
+    .criminal-shop-header {
+        padding: 16px;
+    }
+    
+    .criminal-shop-title {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 4px;
+    }
+    
+    .shop-money-display {
+        font-size: 0.85em;
+    }
+    
+    .criminal-shop-section.expanded .criminal-shop-content {
+        padding: 16px;
+    }
+    
+    .shop-item {
+        padding: 16px;
+        margin-bottom: 12px;
+    }
+    
+    .shop-item-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 6px;
+    }
+    
+    .shop-toggle-icon {
+        font-size: 1.2em;
+    }
+}
+
+/* 접근성 개선 - 애니메이션 줄이기 옵션 */
+@media (prefers-reduced-motion: reduce) {
+    .criminal-shop-section,
+    .criminal-shop-header,
+    .criminal-shop-content,
+    .shop-toggle-icon,
+    .shop-item {
+        transition: none;
+    }
+    
+    .shop-item {
+        animation: none;
+    }
+    
+    .criminal-shop-header::before,
+    .shop-item::before {
+        display: none;
+    }
+}
 /* 구매 버튼 */
 .shop-buy-btn {
     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
-    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.3);
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
+    border-radius: 8px;
+    padding: 10px 20px;
+    font-weight: 600;
+    font-size: 0.9em;
+    letter-spacing: 0.3px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .shop-buy-btn:hover {
     background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
-    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+    box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+    transform: translateY(-2px);
 }
-
+.shop-buy-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 4px 14px rgba(239, 68, 68, 0.3);
+}
+        
 /* 돈 획득 알림 팝업 */
 .criminal-money-notification .money-notification-content {
     display: flex;
@@ -1558,7 +1750,16 @@
     opacity: 0.9;
     text-align: right;
 }
+        
+/* 확장된 상태의 헤더 */
+.criminal-shop-section.expanded .criminal-shop-header {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
+}
 
+.criminal-shop-section.expanded .criminal-shop-header:hover {
+    background: linear-gradient(135deg, #059669 0%, #047857 100%);
+}
 /* 모바일 반응형 */
 @media (max-width: 480px) {
     .criminal-shop-section {
@@ -1580,6 +1781,45 @@
         max-width: 260px !important;
     }
 }
+    /* 암시장 제목 */
+    .criminal-shop-title {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 700;
+        font-size: 1.2em;
+        letter-spacing: 0.3px;
+    }
+
+.shop-money-display {
+    font-size: 0.9em;
+    opacity: 0.9;
+    font-weight: 500;
+}
+
+/* 토글 아이콘 */
+.shop-toggle-icon {
+    font-size: 1.4em;
+    transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+    display: inline-block;
+}
+
+.criminal-shop-section.expanded .shop-toggle-icon {
+    transform: rotate(180deg) scale(1.1);
+}
+/* 암시장 내용 (접히는 부분) */
+.criminal-shop-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+}
+
+.criminal-shop-section.expanded .criminal-shop-content {
+    max-height: 500px;
+    padding: 20px;
+}
+
     </style>
 </head>
 <body>
