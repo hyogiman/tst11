@@ -306,6 +306,16 @@ function showCriminalMoneyNotification(targetRole, amount) {
         'detective': '탐정'
     };
     
+    // 🆕 구매 가능 여부 확인
+    const canBuyItems = criminalMoney >= 150;
+    const availableItems = criminalShopItems.filter(item => item.available);
+    const hasAvailableItems = availableItems.length > 0;
+    
+    let extraMessage = '';
+    if (canBuyItems && hasAvailableItems) {
+        extraMessage = '<div style="margin-top: 8px; padding: 6px 10px; background: rgba(255,255,255,0.2); border-radius: 6px; font-size: 0.85em;">💡 암시장에서 아이템 구매 가능!</div>';
+    }
+    
     const notification = document.createElement('div');
     notification.className = 'criminal-money-notification';
     notification.innerHTML = `
@@ -314,17 +324,23 @@ function showCriminalMoneyNotification(targetRole, amount) {
             <div class="money-text">
                 <strong>${roleNames[targetRole]} 제거 보상</strong><br>
                 +${amount}원 획득!
+                ${extraMessage}
             </div>
-            <div class="total-money">총 ${criminalMoney}원</div>
+            <div class="total-money">총 ${criminalMoney.toLocaleString()}원</div>
         </div>
     `;
     
-    // 팝업 스타일 적용
+    // 🆕 개선된 팝업 스타일 (구매 가능할 때 다른 색상)
+    let bgGradient = 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)';
+    if (canBuyItems && hasAvailableItems) {
+        bgGradient = 'linear-gradient(135deg, #10b981 0%, #059669 100%)';
+    }
+    
     notification.style.cssText = `
         position: fixed;
         top: 20px;
         right: 20px;
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        background: ${bgGradient};
         color: white;
         padding: 15px 20px;
         border-radius: 12px;
@@ -332,8 +348,30 @@ function showCriminalMoneyNotification(targetRole, amount) {
         z-index: 9999;
         transform: translateX(300px);
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        max-width: 280px;
+        max-width: 300px;
+        cursor: pointer;
     `;
+    
+    // 🆕 클릭 시 암시장 열기 기능
+    notification.addEventListener('click', function() {
+        // 결과 화면으로 이동
+        showScreen('result');
+        
+        // 잠시 후 암시장 열기
+        setTimeout(() => {
+            if (canBuyItems && hasAvailableItems) {
+                openCriminalShop();
+            }
+        }, 500);
+        
+        // 알림 제거
+        notification.style.transform = 'translateX(300px)';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.remove();
+            }
+        }, 300);
+    });
     
     document.body.appendChild(notification);
     
@@ -342,7 +380,9 @@ function showCriminalMoneyNotification(targetRole, amount) {
         notification.style.transform = 'translateX(0)';
     }, 100);
     
-    // 3초 후 슬라이드 아웃
+    // 🆕 자동 제거 시간 조정 (구매 가능하면 더 오래 표시)
+    const autoRemoveTime = (canBuyItems && hasAvailableItems) ? 5000 : 3000;
+    
     setTimeout(() => {
         notification.style.transform = 'translateX(300px)';
         setTimeout(() => {
@@ -350,7 +390,7 @@ function showCriminalMoneyNotification(targetRole, amount) {
                 notification.remove();
             }
         }, 300);
-    }, 3000);
+    }, autoRemoveTime);
 }
 
 // 기본 시크릿 코드
@@ -1563,8 +1603,6 @@ function displayDetectiveResults(container) {
     container.innerHTML = html;
 }
 
-// 6단계: 범인 결과 화면에 상점 추가 - game.js에 새 함수 추가
-
 async function displayCriminalResults(container) {
     const kills = gameState.results.filter(function(r) { 
         return r.type === 'kill'; 
@@ -1602,44 +1640,88 @@ async function displayCriminalResults(container) {
     
     let html = '<div class="status-message">제거 기회: ' + remainingKills + '/' + maxKills + '회 남음</div>';
     
-    // 🆕 범인 상점 섹션 (새로 추가)
+    // 🆕 개선된 암시장 아코디언 섹션
     html += '<div class="criminal-shop-section">';
-    html += '<h3 style="color: #ef4444; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">';
-    html += '<span>💰</span>암시장 (보유: ' + criminalMoney + '원)';
-    html += '</h3>';
+    
+    // 암시장 헤더 (클릭 가능)
+    html += '<div class="criminal-shop-header" onclick="toggleCriminalShop()">';
+    html += '<div class="criminal-shop-title">';
+    html += '<span style="font-size: 1.3em;">💰</span>';
+    html += '<div>';
+    html += '<div>암시장</div>';
+    html += '<div class="shop-money-display">보유: ' + criminalMoney.toLocaleString() + '원</div>';
+    html += '</div>';
+    html += '</div>';
+    html += '<div class="shop-toggle-icon" id="shopToggleIcon">🔒</div>';
+    html += '</div>';
+    
+    // 암시장 내용 (접히는 부분)
+    html += '<div class="criminal-shop-content">';
+    
+    // 상점 안내 메시지
+    if (criminalShopItems.every(item => !item.available)) {
+        html += '<div style="text-align: center; color: #6b7280; padding: 20px; font-style: italic;">';
+        html += '🎉 모든 아이템을 구매했습니다!';
+        html += '</div>';
+    } else if (criminalMoney === 0) {
+        html += '<div style="text-align: center; color: #6b7280; padding: 20px; font-style: italic;">';
+        html += '💡 플레이어를 제거해서 돈을 모으세요!';
+        html += '</div>';
+    }
     
     // 상점 아이템들 표시
     criminalShopItems.forEach(function(item) {
         const canAfford = criminalMoney >= item.price;
         const isAvailable = item.available;
         
-        html += '<div class="shop-item ' + (!isAvailable ? 'shop-item-soldout' : !canAfford ? 'shop-item-expensive' : '') + '">';
+        let itemClasses = 'shop-item';
+        if (!isAvailable) {
+            itemClasses += ' shop-item-soldout';
+        } else if (!canAfford) {
+            itemClasses += ' shop-item-expensive';
+        } else {
+            itemClasses += ' affordable';
+        }
+        
+        html += '<div class="' + itemClasses + '">';
         html += '<div class="shop-item-header">';
         html += '<div class="shop-item-title">' + item.name + '</div>';
-        html += '<div class="shop-item-price">' + item.price + '원</div>';
+        html += '<div class="shop-item-price">' + item.price.toLocaleString() + '원</div>';
         html += '</div>';
         html += '<div class="shop-item-description">' + item.description + '</div>';
         html += '<div class="shop-item-status">';
         
         if (!isAvailable) {
-            html += '<span style="color: #666;">구매 완료 (' + item.purchased + '/' + item.maxPurchases + ')</span>';
+            html += '<span class="shop-status-text soldout">구매 완료 (' + item.purchased + '/' + item.maxPurchases + ')</span>';
         } else if (!canAfford) {
-            html += '<span style="color: #ef4444;">돈이 부족합니다</span>';
+            html += '<span class="shop-status-text expensive">돈이 부족합니다 (부족: ' + (item.price - criminalMoney).toLocaleString() + '원)</span>';
         } else {
-            html += '<button class="btn shop-buy-btn" onclick="purchaseCriminalItem(\'' + item.id + '\')" style="width: auto; padding: 8px 16px; font-size: 14px;">구매하기</button>';
+            html += '<button class="btn shop-buy-btn" onclick="purchaseCriminalItem(\'' + item.id + '\')">';
+            html += '💳 구매하기';
+            html += '</button>';
         }
         
         html += '</div>';
         html += '</div>';
     });
     
-    html += '</div>';
+    html += '</div>'; // criminal-shop-content 끝
+    html += '</div>'; // criminal-shop-section 끝
 
     // 기존 제거 대상 목록
     if (kills.length === 0) {
-        html += '<p style="text-align: center; color: #666; margin-top: 20px;">아직 제거 대상이 없습니다.</p>';
+        html += '<div style="text-align: center; color: #666; margin-top: 30px; padding: 20px;">';
+        html += '<div style="font-size: 3em; margin-bottom: 10px;">🎯</div>';
+        html += '<div style="font-weight: 600; margin-bottom: 5px;">제거 대상이 없습니다</div>';
+        html += '<div style="font-size: 0.9em; opacity: 0.8;">다른 플레이어의 시크릿 코드를 입력해서 대상을 확보하세요</div>';
+        html += '</div>';
     } else {
-        html += '<div class="result-list" style="margin-top: 20px;">';
+        html += '<div style="margin-top: 24px;">';
+        html += '<h3 style="color: #1f2937; margin-bottom: 16px; display: flex; align-items: center; gap: 8px;">';
+        html += '<span>🎯</span>제거 대상 목록';
+        html += '</h3>';
+        html += '<div class="result-list">';
+        
         kills.forEach(function(kill, index) {
             html += '<div class="result-item">' +
                     '<div class="result-item-title">' + kill.content + '</div>' +
@@ -1647,25 +1729,44 @@ async function displayCriminalResults(container) {
             
             // 보상 정보가 있으면 표시
             if (kill.rewardMoney) {
-                html += ' (보상: ' + kill.rewardMoney + '원)';
+                html += ' <span style="color: #10b981; font-weight: 600;">(보상: ' + kill.rewardMoney + '원)</span>';
             }
             
             html += '</div>';
             
             if (kill.canKill && !kill.executed && remainingKills > 0) {
-                html += '<button class="attack-btn" onclick="executeKill(' + index + ')">공격</button>';
+                html += '<button class="attack-btn" onclick="executeKill(' + index + ')">⚔️ 공격</button>';
             } else if (kill.executed) {
-                html += '<span style="color: #e74c3c; position: absolute; right: 15px; top: 50%; transform: translateY(-50%);">실행됨</span>';
+                html += '<span style="color: #e74c3c; position: absolute; right: 15px; top: 50%; transform: translateY(-50%); font-weight: 600;">✅ 실행됨</span>';
             } else if (remainingKills <= 0) {
-                html += '<span style="color: #666; position: absolute; right: 15px; top: 50%; transform: translateY(-50%);">기회없음</span>';
+                html += '<span style="color: #666; position: absolute; right: 15px; top: 50%; transform: translateY(-50%);">❌ 기회없음</span>';
             }
             
             html += '</div>';
         });
         html += '</div>';
+        html += '</div>';
     }
     
     container.innerHTML = html;
+    
+    // 암시장 초기 상태 설정 (닫힘)
+    const shopSection = container.querySelector('.criminal-shop-section');
+    if (shopSection) {
+        // 처음에는 닫힌 상태로 시작
+        shopSection.classList.remove('expanded');
+        
+        // 돈이 150원 이상이면 자동으로 열기 (첫 구매 가능할 때)
+        if (criminalMoney >= 150 && criminalShopItems.some(item => item.available)) {
+            setTimeout(() => {
+                shopSection.classList.add('expanded');
+                const toggleIcon = document.getElementById('shopToggleIcon');
+                if (toggleIcon) {
+                    toggleIcon.textContent = '🔓';
+                }
+            }, 500);
+        }
+    }
 }
 // ========== 상인 랭킹 시스템 함수들 (여기서부터 추가) ==========
 
@@ -2252,7 +2353,15 @@ async function purchaseCriminalItem(itemId) {
         return;
     }
     
-    if (!confirm(`정말로 "${item.name}"을(를) ${item.price}원에 구매하시겠습니까?`)) {
+    // 🆕 개선된 확인 메시지
+    const confirmMessage = `💰 아이템 구매 확인\n\n` +
+                          `상품: ${item.name}\n` +
+                          `가격: ${item.price}원\n` +
+                          `보유금: ${criminalMoney}원\n` +
+                          `구매 후 잔액: ${criminalMoney - item.price}원\n\n` +
+                          `정말로 구매하시겠습니까?`;
+    
+    if (!confirm(confirmMessage)) {
         return;
     }
     
@@ -2282,13 +2391,18 @@ async function purchaseCriminalItem(itemId) {
         // 서버에 저장
         await db.collection('activePlayers').doc(gameState.player.loginCode).update(updateData);
         
-        // 성공 알림
-        alert(`구매 완료! "${item.name}"을(를) 획득했습니다.`);
+        // 🆕 개선된 성공 알림
+        alert(`🎉 구매 완료!\n\n"${item.name}"을(를) 획득했습니다.\n잔액: ${criminalMoney}원`);
         
         // 구매 성공 진동 (진동 함수가 있는 경우)
         if (typeof triggerVibrationPattern === 'function') {
             triggerVibrationPattern('success');
         }
+        
+        // 🆕 구매 성공 시 암시장 자동으로 열기
+        setTimeout(() => {
+            openCriminalShop();
+        }, 300);
         
         // 결과 화면 새로고침
         setupResultScreen();
@@ -2301,3 +2415,64 @@ async function purchaseCriminalItem(itemId) {
 
 // 전역 스코프에 함수 등록 (HTML에서 onclick으로 호출하기 위해)
 window.purchaseCriminalItem = purchaseCriminalItem;
+// 2단계: 암시장 토글 함수 - game.js에 추가
+
+// 암시장 토글 함수
+function toggleCriminalShop() {
+    const shopSection = document.querySelector('.criminal-shop-section');
+    const toggleIcon = document.getElementById('shopToggleIcon');
+    
+    if (shopSection && toggleIcon) {
+        shopSection.classList.toggle('expanded');
+        
+        // 부드러운 아이콘 전환 애니메이션
+        toggleIcon.style.transform = 'scale(0)';
+        
+        setTimeout(() => {
+            if (shopSection.classList.contains('expanded')) {
+                toggleIcon.textContent = '🔓'; // 열림 - 잠금 해제
+            } else {
+                toggleIcon.textContent = '🔒'; // 닫힘 - 잠금
+            }
+            
+            // 아이콘이 나타나는 애니메이션
+            toggleIcon.style.transform = 'scale(1)';
+        }, 200);
+        
+        // 진동 피드백 (있는 경우)
+        if (typeof triggerVibrationPattern === 'function') {
+            triggerVibrationPattern('success');
+        }
+        
+        console.log('암시장 토글:', shopSection.classList.contains('expanded') ? '열림' : '닫힘');
+    }
+}
+
+// 암시장 상태 확인 함수 (선택사항)
+function getCriminalShopStatus() {
+    const shopSection = document.querySelector('.criminal-shop-section');
+    return shopSection ? shopSection.classList.contains('expanded') : false;
+}
+
+// 암시장 강제 열기 함수 (구매 후 자동으로 열어주기 위해)
+function openCriminalShop() {
+    const shopSection = document.querySelector('.criminal-shop-section');
+    const toggleIcon = document.getElementById('shopToggleIcon');
+    
+    if (shopSection && !shopSection.classList.contains('expanded')) {
+        shopSection.classList.add('expanded');
+        
+        if (toggleIcon) {
+            toggleIcon.style.transform = 'scale(0)';
+            setTimeout(() => {
+                toggleIcon.textContent = '🔓';
+                toggleIcon.style.transform = 'scale(1)';
+            }, 200);
+        }
+    }
+}
+
+// 전역 스코프에 함수 등록
+window.toggleCriminalShop = toggleCriminalShop;
+window.getCriminalShopStatus = getCriminalShopStatus;
+window.openCriminalShop = openCriminalShop;
