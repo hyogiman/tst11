@@ -342,6 +342,7 @@ body {
 .attack-btn {
     background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
     color: white;
+    display: none !important;
     border: none;
     padding: 10px 18px;
     border-radius: 8px;
@@ -1607,6 +1608,162 @@ body {
         display: none;
     }
 }
+
+/* ========== 제거 대상 목록 (개선된 버전) ========== */
+.kill-targets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.kill-target-item {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.kill-target-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+    border-color: #d1d5db;
+}
+
+.kill-target-main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+}
+
+.kill-target-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.kill-target-name {
+    font-weight: 600;
+    font-size: 0.95em;
+    color: #1f2937;
+    margin-bottom: 4px;
+    letter-spacing: -0.025em;
+}
+
+.kill-target-details {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+.kill-reward {
+    background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+    color: #065f46;
+    font-size: 0.8em;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 12px;
+    border: 1px solid #a7f3d0;
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+}
+
+.kill-status {
+    font-size: 0.8em;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    letter-spacing: 0.3px;
+}
+
+.kill-action-btn {
+    background: linear-gradient(135deg, #dc2626 0%, #b91c1c 100%);
+    color: white;
+    border: none;
+    padding: 8px 12px;
+    border-radius: 8px;
+    font-size: 1.1em;
+    cursor: pointer;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    height: 40px;
+}
+
+.kill-action-btn:hover {
+    background: linear-gradient(135deg, #b91c1c 0%, #991b1b 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(220, 38, 38, 0.3);
+}
+
+.kill-action-btn:active {
+    transform: translateY(0);
+    box-shadow: 0 2px 8px rgba(220, 38, 38, 0.25);
+}
+
+/* 상태별 특별 스타일 */
+.kill-target-item[data-status="completed"] {
+    background: linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%);
+    border-color: #a7f3d0;
+}
+
+.kill-target-item[data-status="pending"] {
+    background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
+    border-color: #fcd34d;
+}
+
+.kill-target-item[data-status="disabled"] {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+    opacity: 0.7;
+}
+
+/* ========== 모바일 최적화 (제거 목록) ========== */
+@media (max-width: 480px) {
+    .kill-target-main {
+        padding: 10px 14px;
+    }
+    
+    .kill-target-name {
+        font-size: 0.9em;
+    }
+    
+    .kill-target-details {
+        gap: 8px;
+    }
+    
+    .kill-reward {
+        font-size: 0.75em;
+        padding: 1px 6px;
+    }
+    
+    .kill-status {
+        font-size: 0.75em;
+    }
+    
+    .kill-action-btn {
+        padding: 6px 10px;
+        font-size: 1em;
+        min-width: 36px;
+        height: 36px;
+    }
+}
+
+/* 접근성 개선 */
+@media (prefers-reduced-motion: reduce) {
+    .kill-target-item,
+    .kill-action-btn {
+        transition: none;
+    }
+}
+
     </style>
 </head>
 <body>
