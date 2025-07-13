@@ -551,8 +551,8 @@ async function loadPlayersData() {
                         statusText = '접속중';
                         statusClass = 'status-online';
                     } else {
-                        statusText = '생존(미접속)';
-                        statusClass = 'status-alive';
+                        statusText = '미참여';
+                        statusClass = '';
                     }
                     showPunishButton = true; // 생존자만 징벌 가능
                 } else {
@@ -568,7 +568,7 @@ async function loadPlayersData() {
                         statusClass = 'status-punished';
                     } else {
                         if (activeData.isActive) {
-                            statusText = '사망(접속중)';
+                            statusText = '사망(미접속)';
                         } else {
                             statusText = '사망';
                         }
