@@ -703,10 +703,16 @@ async function deleteLoginCode(loginCode) {
     }
 }
 
+// 🆕 기존 함수에 실시간 감지 기능만 추가한 완전한 loadPlayersData 함수
+// (기존 loadPlayersData 함수를 통째로 이것으로 교체하세요)
 async function loadPlayersData() {
     try {
+        console.log('플레이어 데이터 로드 시작'); // 🆕 추가된 로그
+        
         const registeredSnapshot = await db.collection('registeredUsers').get();
         const activeSnapshot = await db.collection('activePlayers').get();
+        
+        console.log('등록된 플레이어 수:', registeredSnapshot.size); // 🆕 추가된 로그
         
         const activePlayersMap = {};
         activeSnapshot.forEach(doc => {
@@ -764,16 +770,16 @@ async function loadPlayersData() {
                 // activeData가 없으면 징벌 불가 (아직 게임에 참여하지 않음)
             }
 
-            // 🆕 디버깅 로그 (이 위치에서만 사용)
-            console.log('플레이어 상태 디버깅:', {
-                playerId: doc.id,
-                playerName: userData.name,
-                isAlive: activeData?.isAlive,
-                isActive: activeData?.isActive,
-                deathReason: activeData?.deathReason,
-                statusText: statusText,
-                statusClass: statusClass
-            });
+            // 🆕 새로 등록된 플레이어 감지 (30초 이내)
+            let isNewPlayer = false;
+            if (userData.registeredAt) {
+                const regTime = userData.registeredAt.toMillis();
+                const now = Date.now();
+                if (now - regTime < 30000) { // 30초 이내 등록
+                    isNewPlayer = true;
+                    console.log('새 플레이어 감지:', userData.name); // 🆕 추가된 로그
+                }
+            }
 
             const roleNames = {
                 'detective': '탐정',
@@ -782,6 +788,14 @@ async function loadPlayersData() {
             };
 
             const row = tbody.insertRow();
+            
+            // 🆕 새 플레이어인 경우 하이라이트 스타일 적용
+            if (isNewPlayer) {
+                row.style.background = 'linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)';
+                row.style.borderLeft = '3px solid #10b981';
+                row.style.animation = 'fadeInHighlight 0.5s ease-out';
+            }
+            
             let html = '<td>' + doc.id + '</td>';
             html += '<td>' + userData.name + '</td>';
             html += '<td>' + roleNames[userData.role] + '</td>';
@@ -817,6 +831,9 @@ async function loadPlayersData() {
             html += '</td>';
             row.innerHTML = html;
         }); // ← registeredSnapshot.forEach 끝
+        
+        console.log('플레이어 데이터 로드 완료'); // 🆕 추가된 로그
+        
     } catch (error) {
         console.error('플레이어 데이터 로드 오류:', error);
     }
@@ -1664,18 +1681,65 @@ function updateMerchantRankingTable(merchants) {
 }
 
 // ========== 상인 랭킹 관리 함수들 끝 ==========
-// 실시간 데이터 감지 설정
 function setupRealtimeListeners() {
+    console.log('관리자 실시간 리스너 설정 시작');
+    
+    // 1. 게임 상태 변경 감지
     db.collection('gameSettings').doc('gameStatus')
         .onSnapshot(function(doc) {
             if (doc.exists) {
                 const isActive = doc.data().isActive;
                 updateGameStatusUI(isActive);
+                console.log('게임 상태 변경 감지:', isActive);
             }
         });
 
+    // 2. 🆕 등록된 사용자 변경 감지 (새 등록자 실시간 반영)
+    db.collection('registeredUsers')
+        .onSnapshot(function(snapshot) {
+            console.log('등록된 사용자 변경 감지');
+            
+            // 새로 등록된 사용자 로그
+            snapshot.docChanges().forEach(function(change) {
+                if (change.type === 'added') {
+                    const userData = change.doc.data();
+                    console.log('새 사용자 등록:', change.doc.id, userData.name);
+                    
+                    // 🆕 새 등록 알림 (선택사항)
+                    if (adminState.currentScreen === 'playerManage') {
+                        showAlert(userData.name + '님이 새로 등록되었습니다.', 'success');
+                    }
+                }
+            });
+            
+            // 플레이어 관리 화면이나 개요 화면에 있으면 즉시 업데이트
+            if (adminState.currentScreen === 'playerManage') {
+                loadPlayersData();
+            }
+            if (adminState.currentScreen === 'overview') {
+                loadOverviewData();
+            }
+        });
+
+    // 3. 활성 플레이어 변경 감지 (기존 유지)
     db.collection('activePlayers')
-        .onSnapshot(function() {
+        .onSnapshot(function(snapshot) {
+            console.log('활성 플레이어 변경 감지');
+            
+            // 플레이어 상태 변경 로그
+            snapshot.docChanges().forEach(function(change) {
+                if (change.type === 'added') {
+                    const playerData = change.doc.data();
+                    console.log('🟢 플레이어 접속:', change.doc.id, playerData.name);
+                } else if (change.type === 'modified') {
+                    const playerData = change.doc.data();
+                    console.log('🔄 플레이어 상태 변경:', change.doc.id, playerData.name);
+                } else if (change.type === 'removed') {
+                    console.log('🔴 플레이어 제거:', change.doc.id);
+                }
+            });
+            
+            // 관련 화면들 업데이트
             if (adminState.currentScreen === 'playerManage') {
                 loadPlayersData();
             }
@@ -1686,6 +1750,33 @@ function setupRealtimeListeners() {
                 loadMerchantRankingData();
             }
         });
+
+    // 4. 🆕 공지사항 변경 감지 (관리자가 다른 탭에서 공지사항 추가했을 때)
+    db.collection('notices')
+        .onSnapshot(function(snapshot) {
+            snapshot.docChanges().forEach(function(change) {
+                if (change.type === 'added' && adminState.currentScreen === 'notices') {
+                    console.log('새 공지사항 추가됨');
+                    loadNoticesData();
+                }
+            });
+        });
+
+    // 5. 🆕 로그인 코드 변경 감지 (관리자가 다른 탭에서 코드 생성했을 때)
+    db.collection('loginCodes')
+        .onSnapshot(function(snapshot) {
+            if (adminState.currentScreen === 'createCode') {
+                snapshot.docChanges().forEach(function(change) {
+                    if (change.type === 'added') {
+                        console.log('새 로그인 코드 생성됨:', change.doc.id);
+                        loadLoginCodesList();
+                        loadOverviewData(); // 개요 화면 코드 수 업데이트
+                    }
+                });
+            }
+        });
+    
+    console.log('관리자 실시간 리스너 설정 완료');
 }
 
 // 초기화
