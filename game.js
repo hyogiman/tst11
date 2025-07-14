@@ -2224,7 +2224,7 @@ async function displayCriminalResults(container) {
             
             // 🔧 버튼 영역 수정
             if (showButton) {
-                html += '<button class="kill-action-btn" onclick="(' + index + ')">';
+                html += '<button class="kill-action-btn" onclick="executeKill(' + index + ')">';
                 html += '⚔️';
                 html += '</button>';
             }
