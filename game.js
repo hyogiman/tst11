@@ -732,7 +732,7 @@ async function register() {
         const isGameActive = await checkGameStatus();
         
         if (isGameActive) {
-             // 게임이 시작된 경우에만 활성 플레이어로 등록
+            // 게임이 시작된 경우에만 활성 플레이어로 등록
             await db.collection('activePlayers').doc(loginCode).set({
                 name: userData.name,
                 position: userData.position,
@@ -741,13 +741,17 @@ async function register() {
                 reconnectPassword: userData.reconnectPassword,
                 isAlive: true,
                 isActive: true,
-                results: previousData.results || [],
-                killCount: previousData.killCount || 0,
-                money: previousData.money || 0,
-                usedCodes: previousData.usedCodes || [],
-                receivedInteractions: previousData.receivedInteractions || {},
-                // 🆕 maxKills 설정 (관리자 설정 고려)
-                maxKills: await getDefaultMaxKills(),
+                results: [], // 🆕 새 등록자는 빈 배열로 시작
+                killCount: 0, // 🆕 새 등록자는 0으로 시작
+                money: 0, // 🆕 새 등록자는 0원으로 시작
+                usedCodes: [], // 🆕 새 등록자는 빈 배열로 시작
+                receivedInteractions: {}, // 🆕 새 등록자는 빈 객체로 시작
+                // 범인인 경우 범인 관련 데이터도 추가
+                ...(userData.role === 'criminal' && {
+                    criminalMoney: 0, // 🆕 새 범인은 0원으로 시작
+                    maxKills: await getDefaultMaxKills(),
+                    criminalShopPurchases: {}
+                }),
                 loginTime: firebase.firestore.FieldValue.serverTimestamp()
             });
         }
