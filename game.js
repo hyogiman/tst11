@@ -1037,23 +1037,25 @@ async function loadNotices() {
                            '<img src="' + notice.imageUrl + '" alt="공지사항 이미지" ' +
                            'style="width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px; ' +
                            'box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer;" ' +
-                           'onclick="openImageModal(\'' + notice.imageUrl + '\')" ' +
+                           // 🆕 클릭 이벤트 전파 방지 추가
+                           'onclick="event.stopPropagation(); openImageModal(\'' + notice.imageUrl + '\')" ' +
                            'onerror="this.style.display=\'none\'; console.error(\'공지사항 이미지 로드 실패:\', this.src);">' +
                            '</div>';
             } else {
                 console.log('공지사항에 유효한 이미지 없음:', notice.imageUrl);
             }
             
-            html += '<div class="notice-item" id="notice-' + doc.id + '">' +
-                    '<div class="notice-header" onclick="toggleNotice(\'' + doc.id + '\')">' +
-                    '<div class="notice-title">' + notice.title + '</div>' +
-                    '<div class="notice-toggle">▼</div>' +
-                    '</div>' +
-                    '<div class="notice-content">' +
-                    imageHtml + // 🆕 검증된 이미지만 표시
-                    '<div class="notice-text">' + formatTextWithLineBreaks(notice.content) + '</div>' +
-                    '</div>' +
-                    '</div>';
+        html += '<div class="notice-item" id="notice-' + doc.id + '">' +
+                // 🆕 헤더 클릭 이벤트에 event 매개변수 추가
+                '<div class="notice-header" onclick="toggleNotice(\'' + doc.id + '\', event)">' +
+                '<div class="notice-title">' + notice.title + '</div>' +
+                '<div class="notice-toggle">▼</div>' +
+                '</div>' +
+                '<div class="notice-content">' +
+                imageHtml + // 🆕 수정된 이미지 HTML
+                '<div class="notice-text">' + formatTextWithLineBreaks(notice.content) + '</div>' +
+                '</div>' +
+                '</div>';
         });
         html += '</div>';
         
@@ -1069,12 +1071,19 @@ async function loadNotices() {
 }
 
 
-// 🆕 완전히 단순화된 toggleNotice 함수 (기존 함수 교체)
-function toggleNotice(noticeId) {
+// 🆕 개선된 toggleNotice 함수 (기존 함수 교체)
+function toggleNotice(noticeId, event) {
+    // 🆕 이벤트 전파 방지 추가
+    if (event) {
+        event.stopPropagation();
+    }
+    
     const noticeElement = document.getElementById('notice-' + noticeId);
     if (!noticeElement) return;
     
     const isExpanded = noticeElement.classList.contains('expanded');
+    
+    console.log('토글 요청:', noticeId, isExpanded ? '닫기' : '열기');
     
     if (isExpanded) {
         // 닫기
@@ -1085,6 +1094,7 @@ function toggleNotice(noticeId) {
         document.querySelectorAll('.notice-item.expanded').forEach(item => {
             if (item.id !== 'notice-' + noticeId) {
                 item.classList.remove('expanded');
+                console.log('다른 공지사항 닫기:', item.id);
             }
         });
         
@@ -1761,7 +1771,7 @@ function displayDetectiveResults(container) {
         const clueId = 'clue-' + index;
         
         html += '<div class="clue-item" id="' + clueId + '">';
-        html += '<div class="clue-header" onclick="toggleClue(\'' + clueId + '\')">';
+        html += '<div class="clue-header" onclick="toggleClue(\'' + clueId + '\', event)">';
         html += '<div class="clue-title">' + clue.title + '</div>';
         html += '<div class="clue-timestamp">' + clue.timestamp + '</div>';
         html += '<div class="clue-toggle">▼</div>';
@@ -1780,6 +1790,7 @@ function displayDetectiveResults(container) {
     addImagesToClues(clues);
 }
 // 🆕 단서에 이미지를 추가하는 비동기 함수
+// 🆕 addImagesToClues 함수에서 이미지 HTML 생성 부분 수정
 async function addImagesToClues(clues) {
     for (let i = 0; i < clues.length; i++) {
         const clue = clues[i];
@@ -1790,12 +1801,13 @@ async function addImagesToClues(clues) {
             if (secretInfo.imageUrl) {
                 const clueContent = document.querySelector('#' + clueId + ' .clue-content');
                 if (clueContent) {
-                    // 이미지 HTML을 텍스트 앞에 삽입
+                    // 🆕 이벤트 전파 방지 추가
                     const imageHtml = '<div class="clue-image-container" style="margin-bottom: 12px;">' +
                                      '<img src="' + secretInfo.imageUrl + '" alt="단서 이미지" ' +
                                      'style="width: 100%; max-height: 200px; object-fit: contain; border-radius: 8px; ' +
                                      'box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer;" ' +
-                                     'onclick="openImageModal(\'' + secretInfo.imageUrl + '\')" ' +
+                                     // 🆕 이벤트 전파 방지 추가
+                                     'onclick="event.stopPropagation(); openImageModal(\'' + secretInfo.imageUrl + '\')" ' +
                                      'onerror="this.style.display=\'none\'; console.error(\'이미지 로드 실패:\', this.src);">' +
                                      '</div>';
                     
@@ -2600,7 +2612,12 @@ async function displayMerchantResults(container) {
     container.innerHTML = finalHtml;
 }
 
-function toggleClue(clueId) {
+function toggleClue(clueId, event) {
+    // 🆕 이벤트 전파 방지 추가
+    if (event) {
+        event.stopPropagation();
+    }
+    
     // 모든 단서 접기
     const allClues = document.querySelectorAll('.clue-item');
     allClues.forEach(function(clue) {
@@ -2612,7 +2629,10 @@ function toggleClue(clueId) {
     // 클릭한 단서만 토글
     const targetClue = document.getElementById(clueId);
     if (targetClue) {
+        const wasExpanded = targetClue.classList.contains('expanded');
         targetClue.classList.toggle('expanded');
+        
+        console.log('단서 토글:', clueId, wasExpanded ? '닫기' : '열기');
     }
 }
 
