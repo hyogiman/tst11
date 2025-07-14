@@ -667,6 +667,41 @@
             animation: spin 1s linear infinite;
             margin: 0 auto 10px;
         }
+        @keyframes fadeInHighlight {
+    0% {
+        opacity: 0;
+        transform: translateY(10px);
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        }
+    50% {
+        background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
+        }
+    100% {
+        opacity: 1;
+        transform: translateY(0);
+        background: linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%);
+        }
+    }
+
+        /* 새 플레이어 행 스타일 (선택사항 - 더 눈에 띄게 하려면) */
+        tr[style*="linear-gradient(135deg, #ecfdf5"] {
+            position: relative;
+        }
+        
+        tr[style*="linear-gradient(135deg, #ecfdf5"]::before {
+            content: "NEW!";
+            position: absolute;
+            right: 5px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: #10b981;
+            color: white;
+            font-size: 10px;
+            font-weight: bold;
+            padding: 2px 6px;
+            border-radius: 10px;
+            animation: pulse 2s infinite;
+        }
     </style>
 </head>
 <body>
