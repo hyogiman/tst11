@@ -1029,7 +1029,7 @@ async function loadNotices() {
         noticesSnapshot.forEach(function(doc, index) {
             const notice = doc.data();
             
-            // 🆕 이미지 URL 유효성 검사
+            // 🆕 이미지 HTML을 onclick 없이 생성 (나중에 JavaScript로 이벤트 추가)
             let imageHtml = '';
             if (notice.imageUrl && notice.imageUrl.trim() !== '' && notice.imageUrl !== 'null') {
                 console.log('공지사항 이미지 URL:', notice.imageUrl);
@@ -1037,29 +1037,32 @@ async function loadNotices() {
                            '<img src="' + notice.imageUrl + '" alt="공지사항 이미지" ' +
                            'style="width: 100%; max-height: 300px; object-fit: contain; border-radius: 8px; ' +
                            'box-shadow: 0 2px 8px rgba(0,0,0,0.1); cursor: pointer;" ' +
-                           // 🆕 클릭 이벤트 전파 방지 추가
-                           'onclick="event.stopPropagation(); openImageModal(\'' + notice.imageUrl + '\')" ' +
+                           // 🆕 onclick 제거! data 속성으로 URL 저장
+                           'data-image-url="' + notice.imageUrl + '" ' +
+                           'class="notice-modal-image" ' +
                            'onerror="this.style.display=\'none\'; console.error(\'공지사항 이미지 로드 실패:\', this.src);">' +
                            '</div>';
             } else {
                 console.log('공지사항에 유효한 이미지 없음:', notice.imageUrl);
             }
             
-        html += '<div class="notice-item" id="notice-' + doc.id + '">' +
-                // 🆕 헤더 클릭 이벤트에 event 매개변수 추가
-                '<div class="notice-header" onclick="toggleNotice(\'' + doc.id + '\', event)">' +
-                '<div class="notice-title">' + notice.title + '</div>' +
-                '<div class="notice-toggle">▼</div>' +
-                '</div>' +
-                '<div class="notice-content">' +
-                imageHtml + // 🆕 수정된 이미지 HTML
-                '<div class="notice-text">' + formatTextWithLineBreaks(notice.content) + '</div>' +
-                '</div>' +
-                '</div>';
+            html += '<div class="notice-item" id="notice-' + doc.id + '">' +
+                    '<div class="notice-header" onclick="toggleNotice(\'' + doc.id + '\', event)">' +
+                    '<div class="notice-title">' + notice.title + '</div>' +
+                    '<div class="notice-toggle">▼</div>' +
+                    '</div>' +
+                    '<div class="notice-content">' +
+                    imageHtml + // 🆕 onclick 없는 이미지 HTML
+                    '<div class="notice-text">' + formatTextWithLineBreaks(notice.content) + '</div>' +
+                    '</div>' +
+                    '</div>';
         });
         html += '</div>';
         
         noticesContainer.innerHTML = html;
+        
+        // 🆕 HTML 삽입 후 이미지 클릭 이벤트를 별도로 추가
+        setupNoticeImageEvents();
         
     } catch (error) {
         console.error('공지사항 로드 오류:', error);
@@ -1067,6 +1070,38 @@ async function loadNotices() {
         if (noticesContainer) {
             noticesContainer.innerHTML = '<p style="text-align: center; color: #666; font-size: 0.9em;">공지사항을 불러올 수 없습니다.</p>';
         }
+    }
+}
+
+// 🆕 공지사항 이미지 클릭 이벤트 별도 설정 함수
+function setupNoticeImageEvents() {
+    const images = document.querySelectorAll('.notice-modal-image');
+    
+    images.forEach(function(img) {
+        // 🆕 기존 이벤트 리스너 제거 (중복 방지)
+        img.removeEventListener('click', handleNoticeImageClick);
+        
+        // 🆕 새로운 이벤트 리스너 추가
+        img.addEventListener('click', handleNoticeImageClick);
+    });
+    
+    console.log('공지사항 이미지 이벤트 설정 완료:', images.length + '개');
+}
+
+// 🆕 공지사항 이미지 클릭 핸들러 함수
+function handleNoticeImageClick(event) {
+    // 🆕 이벤트 전파 완전 차단
+    event.stopPropagation();
+    event.preventDefault();
+    
+    const imageUrl = event.target.getAttribute('data-image-url');
+    
+    console.log('공지사항 이미지 클릭됨:', imageUrl);
+    
+    if (imageUrl) {
+        openImageModal(imageUrl);
+    } else {
+        console.error('이미지 URL을 찾을 수 없음');
     }
 }
 
@@ -3020,6 +3055,8 @@ function openCriminalShop() {
 // 전역 스코프에 함수 등록
 window.toggleMySecret = toggleMySecret;
 window.toggleNotice = toggleNotice; // 🆕 업데이트된 함수
+window.setupNoticeImageEvents = setupNoticeImageEvents; // 🆕 추가
+window.handleNoticeImageClick = handleNoticeImageClick; // 🆕 추가
 window.purchaseCriminalItem = purchaseCriminalItem;
 window.toggleCriminalShop = toggleCriminalShop;
 window.getCriminalShopStatus = getCriminalShopStatus;
