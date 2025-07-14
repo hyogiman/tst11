@@ -3012,3 +3012,4 @@ window.goToNotices = goToNotices;
 window.triggerVibrationPattern = triggerVibrationPattern;
 window.onModalImageLoad = onModalImageLoad;
 window.onModalImageError = onModalImageError;
+window.executeKill = executeKill; // 🆕 이 줄 추가!
