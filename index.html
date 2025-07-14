@@ -513,11 +513,26 @@ body {
 .notice-image-container {
     margin-bottom: 12px;
     text-align: center;
-    /* 🆕 이미지 클릭 영역 독립화 */
     position: relative;
-    z-index: 5;
+    z-index: 100; /* 🆕 높은 우선순위 */
+}
+.notice-modal-image {
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    cursor: pointer;
+    transition: transform 0.2s ease;
+    /* 🆕 이미지 클릭 영역 완전 격리 */
+    position: relative;
+    z-index: 101;
+    display: block;
 }
 
+.notice-modal-image:hover {
+    transform: scale(1.02);
+}
 .notice-image-container img {
     max-width: 100%;
     height: auto;
@@ -588,13 +603,14 @@ body {
 
 /* 🆕 완전히 단순화된 공지사항 내용 */
 .notice-content {
-    background: #f9fafb;
-    overflow: visible !important;
-    transition: all 0.3s ease;
-    /* 닫힌 상태 */
     max-height: 0;
+    overflow: hidden;
     padding: 0 16px;
     opacity: 0;
+    background: #f9fafb;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    /* 🆕 내용 영역의 잘못된 클릭 방지 */
+    position: relative;
 }
 
 
@@ -605,23 +621,22 @@ body {
     padding: 12px 16px !important;
     opacity: 1 !important;
     overflow: visible !important;
-    /* 🆕 확장된 상태에서만 내부 클릭 허용 */
-    pointer-events: auto;
 }
 .notice-text {
     color: #4b5563;
     line-height: 1.6;
     font-size: 0.9em;
     word-wrap: break-word;
-    white-space: pre-line; /* 줄바꿈 처리 */
+    white-space: pre-line;
     overflow-wrap: break-word;
     word-break: break-word;
-    /* 🆕 모든 높이 제한 제거 */
     max-height: none !important;
     height: auto !important;
     overflow: visible !important;
+    /* 🆕 텍스트는 별도 영역으로 분리 */
+    position: relative;
+    z-index: 1;
 }
-
 /* ========== 나의 시크릿 코드 토글 스타일 ========== */
 .my-secret-section {
     background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
