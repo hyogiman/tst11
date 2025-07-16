@@ -46,9 +46,6 @@ function setupRealtimeListener() {
             if (data.receivedInteractions) {
                 gameState.receivedInteractions = data.receivedInteractions;
                 updateInteractionCount();
-                // 🆕 receivedInteractions 변경 시 즉시 멤버 리스트 업데이트
-                loadAvailableMembers();
-                
             }
             
                 // 역할이나 시크릿 코드가 변경된 경우 게임 상태 업데이트
@@ -1516,7 +1513,6 @@ async function submitCode() {
         }
     }
 
-
     document.getElementById('codeLoading').style.display = 'block';
 
     try {
@@ -1558,12 +1554,7 @@ async function submitCode() {
         await db.collection('activePlayers').doc(gameState.player.loginCode).update({
             usedCodes: firebase.firestore.FieldValue.arrayUnion(targetCode)
         });
-
-    
-       // 🆕 usedCodes 변경 후 즉시 멤버 리스트 업데이트
-       loadAvailableMembers();
-            
-            
+        
         // 상호작용 카운트 업데이트
         updateInteractionCount();
         
@@ -3061,65 +3052,6 @@ function openCriminalShop() {
     }
 }
 
-async function loadAvailableMembers() {
-    if (!gameState.isLoggedIn) return;
-    
-    try {
-        const snapshot = await db.collection('activePlayers')
-            .where('isAlive', '==', true)
-            .where('isActive', '==', true)
-            .get();
-        
-        const members = [];
-        const now = Date.now();
-        
-        for (const doc of snapshot.docs) {
-            const data = doc.data();
-            if (doc.id !== gameState.player.loginCode && 
-                data.interactionStatus === 'available') {
-                
-                // 🆕 단순한 체크: 이 사람에게 시크릿 코드를 입력할 수 있는가?
-                const canInputCode = await canInputSecretCode(data.secretCode);
-                
-                if (canInputCode) {
-                    members.push({
-                        loginCode: doc.id,
-                        name: data.name,
-                        position: data.position,
-                        role: data.role
-                    });
-                }
-            }
-        }
-        
-        gameState.availableMembers = members;
-        updateMembersList();
-    } catch (error) {
-        console.error('멤버 목록 로드 오류:', error);
-    }
-}
-// 🆕 시크릿 코드 입력 가능 여부 체크 (submitCode 로직과 동일)
-async function canInputSecretCode(targetCode) {
-    const now = Date.now();
-    
-    // 1. 내가 이미 입력한 코드인지 확인 (영구 차단)
-    if (gameState.usedCodes.includes(targetCode)) {
-        return false;
-    }
-
-    // 2. 상대가 나에게 코드를 입력했는지 확인 (역방향 쿨타임)
-    if (gameState.receivedInteractions[targetCode]) {
-        const interactionData = gameState.receivedInteractions[targetCode];
-        if (interactionData.cooldownUntil && now < interactionData.cooldownUntil) {
-            return false;
-        }
-    }
-    
-    return true;
-}
-
-
-
 // 전역 스코프에 함수 등록
 window.toggleMySecret = toggleMySecret;
 window.toggleNotice = toggleNotice; // 🆕 업데이트된 함수
@@ -3138,4 +3070,3 @@ window.triggerVibrationPattern = triggerVibrationPattern;
 window.onModalImageLoad = onModalImageLoad;
 window.onModalImageError = onModalImageError;
 window.executeKill = executeKill; // 🆕 이 줄 추가!
-window.canInputSecretCode = canInputSecretCode;
